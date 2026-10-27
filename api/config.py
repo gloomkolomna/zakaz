@@ -47,10 +47,27 @@ ADMIN_VK_IDS = _env_list_int("ADMIN_VK_IDS")
 
 MEMBER_GATE_ENABLED = _env_bool("MEMBER_GATE_ENABLED", True)
 
+DONUT_API_URL = os.getenv("DONUT_API_URL", "").strip().rstrip("/")
+DONUT_API_KEY = os.getenv("DONUT_API_KEY", "")
+DONUT_TIMEOUT_SECONDS = _env_int("DONUT_TIMEOUT_SECONDS", 5)
+DONOR_SYNC_INTERVAL_MINUTES = _env_int("DONOR_SYNC_INTERVAL_MINUTES", 30)
+EARLY_ACCESS_HOURS = _env_int("EARLY_ACCESS_HOURS", 48)
+
 LOG_RETENTION_DAYS = _env_int("LOG_RETENTION_DAYS", 30)
 
 UPLOADS_DIR = os.getenv("UPLOADS_DIR", os.path.join(API_DIR, "uploads"))
 os.makedirs(UPLOADS_DIR, exist_ok=True)
+UPLOAD_MAX_BYTES = _env_int("UPLOAD_MAX_BYTES", 10 * 1024 * 1024)
+VIDEO_MAX_MB = _env_int("VIDEO_MAX_MB", 100)
+UPLOAD_VIDEO_MAX_BYTES = VIDEO_MAX_MB * 1024 * 1024
+
+S3_ENABLED = _env_bool("S3_ENABLED", False)
+S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL", "https://storage.yandexcloud.net")
+S3_ACCESS_KEY_ID = os.getenv("S3_ACCESS_KEY_ID", "")
+S3_SECRET_ACCESS_KEY = os.getenv("S3_SECRET_ACCESS_KEY", "")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "korgiholidays")
+S3_PUBLIC_URL = os.getenv("S3_PUBLIC_URL", "").rstrip("/")
+S3_PREFIX = os.getenv("S3_PREFIX", "zakaz").strip("/")
 
 
 def get_admin_vk_ids() -> set[int]:

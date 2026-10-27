@@ -8,8 +8,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 import config
 from db import SessionLocal, init_db
 from middleware import log_failed_requests
+from routes.admin_catalog import router as admin_catalog_router
+from routes.admin_orders import router as admin_orders_router
 from routes.auth import router as auth_router
+from routes.catalog import router as catalog_router
 from routes.me import router as me_router
+from routes.orders import router as orders_router
 
 init_db()
 
@@ -21,6 +25,10 @@ if gate_misconfigured():
         "гейт подписки фактически отключён (fail-open)",
         flush=True,
     )
+
+from services.donor import start_donor_sync_thread
+
+start_donor_sync_thread()
 
 
 app = FastAPI(title="СобериЗаказ API")
@@ -46,6 +54,10 @@ app.mount("/api/uploads", StaticFiles(directory=config.UPLOADS_DIR), name="uploa
 
 app.include_router(auth_router)
 app.include_router(me_router)
+app.include_router(catalog_router)
+app.include_router(orders_router)
+app.include_router(admin_catalog_router)
+app.include_router(admin_orders_router)
 
 
 @app.get("/api/")

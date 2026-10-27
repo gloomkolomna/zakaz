@@ -3,8 +3,12 @@ uvicorn[standard]==0.32.1
 gunicorn==23.0.0
 python-jose[cryptography]==3.5.0
 python-dotenv==1.2.4
+python-multipart==0.0.32
 sqlalchemy==2.1.5
 alembic==1.20.0
 httpx==0.28.1
 pydantic==2.14.1
+Pillow==11.3.0
+pillow-heif==1.8.1
+boto3==1.43.115
 pytest==8.4.2

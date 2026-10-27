@@ -71,5 +71,13 @@ def create_session(req: SessionRequest, db: Session = Depends(get_db)):
             user.display_name = full
             db.commit()
 
+    if not is_admin:
+        try:
+            from services.donor import sync_user
+
+            sync_user(db, user.vk_id)
+        except Exception:
+            pass
+
     token = create_access_token(user.vk_id)
     return SessionResponse(token=token, vk_id=user.vk_id, role=user.role)

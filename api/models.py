@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String, Text
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
@@ -21,7 +21,151 @@ class User(Base):
     display_name = Column(String, nullable=True)
     is_member = Column(Boolean, nullable=True)
     member_cached_at = Column(DateTime, nullable=True)
+    donor_exempt = Column(Boolean, nullable=False, default=False, server_default="0")
     created_at = Column(DateTime, nullable=False, default=utcnow)
+
+
+class DonorCache(Base):
+    __tablename__ = "donor_cache"
+
+    vk_id = Column(Integer, primary_key=True)
+    is_don = Column(Boolean, nullable=False, default=False, server_default="0")
+    don_since = Column(String, nullable=True)
+    updated_at = Column(String, nullable=True)
+    last_synced_at = Column(String, nullable=True)
+
+
+class Section(Base):
+    __tablename__ = "sections"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String, nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+
+    products = relationship("Product", back_populates="section", order_by="Product.sort_order")
+
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    section_id = Column(
+        Integer, ForeignKey("sections.id", ondelete="CASCADE"), nullable=False
+    )
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+    video_url = Column(String, nullable=True)
+    video_file_url = Column(String, nullable=True)
+    video_poster_url = Column(String, nullable=True)
+    early_until = Column(DateTime, nullable=True)
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+
+    section = relationship("Section", back_populates="products")
+    steps = relationship("ProductStep", back_populates="product", order_by="ProductStep.sort_order")
+
+    __table_args__ = (
+        Index("ix_products_section_sort", "section_id", "sort_order"),
+        Index("ix_products_early_until", "early_until"),
+    )
+
+
+class ProductStep(Base):
+    __tablename__ = "product_steps"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(
+        Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )
+    title = Column(String, nullable=False)
+    hint = Column(Text, nullable=True)
+    selection_mode = Column(String, nullable=False, default="single", server_default="single")
+    is_required = Column(Boolean, nullable=False, default=False, server_default="0")
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+
+    product = relationship("Product", back_populates="steps")
+    cards = relationship("StepCard", back_populates="step", order_by="StepCard.sort_order")
+
+    __table_args__ = (
+        Index("ix_product_steps_product_sort", "product_id", "sort_order"),
+    )
+
+
+class StepCard(Base):
+    __tablename__ = "step_cards"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    step_id = Column(
+        Integer, ForeignKey("product_steps.id", ondelete="CASCADE"), nullable=False
+    )
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+    price = Column(Integer, nullable=False, default=0, server_default="0")
+    max_qty = Column(Integer, nullable=False, default=10, server_default="10")
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+
+    step = relationship("ProductStep", back_populates="cards")
+
+    __table_args__ = (
+        Index("ix_step_cards_step_sort", "step_id", "sort_order"),
+    )
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.vk_id", ondelete="CASCADE"), nullable=False)
+    buyer_name = Column(String, nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    product_title = Column(String, nullable=False)
+    section_title = Column(String, nullable=False)
+    total = Column(Integer, nullable=False, default=0, server_default="0")
+    items_count = Column(Integer, nullable=False, default=0, server_default="0")
+    status = Column(String, nullable=False, default="new", server_default="new")
+    queue_order = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=utcnow, index=True)
+    read_at = Column(DateTime, nullable=True)
+    cancelled_at = Column(DateTime, nullable=True)
+    cancel_seen_at = Column(DateTime, nullable=True)
+    done_at = Column(DateTime, nullable=True)
+
+    items = relationship("OrderItem", back_populates="order", order_by="OrderItem.id")
+
+    __table_args__ = (
+        Index("ix_orders_status_queue", "status", "queue_order"),
+        Index("ix_orders_status_cancel_seen", "status", "cancel_seen_at"),
+        Index("ix_orders_user_created", "user_id", "created_at"),
+    )
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    card_id = Column(Integer, ForeignKey("step_cards.id", ondelete="SET NULL"), nullable=True)
+    step_title = Column(String, nullable=False)
+    card_title = Column(String, nullable=False)
+    image_url = Column(String, nullable=True)
+    price = Column(Integer, nullable=False)
+    qty = Column(Integer, nullable=False)
+    sum = Column(Integer, nullable=False)
+
+    order = relationship("Order", back_populates="items")
+
+    __table_args__ = (
+        Index("ix_order_items_order", "order_id"),
+    )
 
 
 class Setting(Base):

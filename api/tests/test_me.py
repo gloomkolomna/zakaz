@@ -10,7 +10,13 @@ def test_me_requires_auth(client):
 def test_me_player(player_client):
     resp = player_client.get("/api/me")
     assert resp.status_code == 200
-    assert resp.json() == {"vk_id": 123, "display_name": None, "role": "player"}
+    assert resp.json() == {
+        "vk_id": 123,
+        "display_name": None,
+        "role": "player",
+        "is_donor": False,
+        "donor_exempt": False,
+    }
 
 
 def test_me_admin(admin_client):

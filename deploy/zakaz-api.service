@@ -1,0 +1,22 @@
+[Unit]
+Description=Zakaz API (FastAPI gunicorn)
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/zakaz/api
+Environment=PATH=/opt/zakaz/api/venv/bin
+Environment=PYTHONPATH=/opt/zakaz/api
+ExecStart=/opt/zakaz/api/venv/bin/gunicorn \
+    -w 2 \
+    -k uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8006 \
+    --access-logfile /var/log/zakaz/api-access.log \
+    --error-logfile /var/log/zakaz/api-error.log \
+    --log-level warning \
+    --timeout 120 \
+    main:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

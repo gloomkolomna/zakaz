@@ -10,6 +10,8 @@ os.environ["VK_APP_SECRET"] = "test-vk-secret"
 os.environ["VK_SERVICE_TOKEN"] = ""
 os.environ["VK_GROUP_ID"] = ""
 os.environ["MEMBER_GATE_ENABLED"] = "false"
+os.environ["DONUT_API_URL"] = ""
+os.environ["DONUT_API_KEY"] = ""
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 

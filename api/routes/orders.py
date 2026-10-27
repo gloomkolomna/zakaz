@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+import config
 from db import get_db
 from deps import get_current_user
 from models import Order, OrderItem, Product, ProductStep, StepCard, User, utcnow
@@ -27,6 +31,30 @@ class OrderIn(BaseModel):
 
 def _bad(message: str):
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+
+
+def _check_rate_limit(db: Session, user: User) -> None:
+    if user.role == "admin":
+        return
+    limit = config.ORDER_RATE_LIMIT_PER_MINUTE
+    if limit <= 0:
+        return
+    cutoff = utcnow() - datetime.timedelta(minutes=1)
+    recent = (
+        db.query(func.count(Order.id))
+        .filter(Order.user_id == user.vk_id, Order.created_at >= cutoff)
+        .scalar()
+        or 0
+    )
+    if recent >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "rate_limited",
+                "message": "Слишком много заказов подряд. Подождите минуту и попробуйте снова.",
+            },
+            headers={"Retry-After": "60"},
+        )
 
 
 def _own_order(db: Session, order_id: int, user: User) -> Order:
@@ -53,6 +81,8 @@ def create_order(data: OrderIn, db: Session = Depends(get_db), user: User = Depe
                 "message": "Товар ещё не открыт для всех — сейчас доступен донам сообщества",
             },
         )
+
+    _check_rate_limit(db, user)
 
     if not 1 <= len(data.items) <= 100:
         _bad("В заказе должно быть от 1 до 100 позиций")

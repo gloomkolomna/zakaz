@@ -224,6 +224,40 @@ def test_inactive_card_and_product_rejected(player_client, db):
     ).status_code == 400
 
 
+def test_order_rate_limit_per_user(player_client, db, monkeypatch):
+    import config
+
+    monkeypatch.setattr(config, "ORDER_RATE_LIMIT_PER_MINUTE", 2)
+    product, small, large, linen = _shop(db)
+
+    for _ in range(2):
+        assert player_client.post(
+            "/api/orders",
+            json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+        ).status_code == 201
+
+    resp = player_client.post(
+        "/api/orders",
+        json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+    )
+    assert resp.status_code == 429
+    assert resp.json()["detail"]["code"] == "rate_limited"
+    assert resp.headers["Retry-After"] == "60"
+
+    with make_user_client(124) as other:
+        assert other.post(
+            "/api/orders",
+            json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+        ).status_code == 201
+
+    with make_user_client(400977, "admin") as admin:
+        for _ in range(3):
+            assert admin.post(
+                "/api/orders",
+                json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+            ).status_code == 201
+
+
 def test_order_queue_positions_and_compression(player_client, db):
     product, small, large, linen = _shop(db)
 

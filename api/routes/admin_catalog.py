@@ -230,7 +230,7 @@ def create_section(data: SectionIn, db: Session = Depends(get_db), user: User = 
     row = Section(
         title=_title(data.title),
         sort_order=data.sort_order if data.sort_order is not None else _next_section_order(db),
-        is_active=True if data.is_active is None else data.is_active,
+        is_active=False if data.is_active is None else data.is_active,
     )
     db.add(row)
     db.commit()
@@ -314,7 +314,7 @@ def create_product(data: ProductIn, db: Session = Depends(get_db), user: User = 
         title=_title(data.title or ""),
         description=data.description,
         sort_order=data.sort_order if data.sort_order is not None else _next_product_order(db, section.id),
-        is_active=True if data.is_active is None else data.is_active,
+        is_active=False if data.is_active is None else data.is_active,
     )
     db.add(row)
     db.commit()

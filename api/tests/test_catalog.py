@@ -151,6 +151,37 @@ def test_catalog_header_texts_editable(admin_client, db):
     assert "catalog_description" not in info
 
 
+def test_new_section_and_product_are_unpublished(admin_client, db):
+    section = admin_client.post("/api/admin/sections", json={"title": "Черновик"}).json()
+    assert section["is_active"] is False
+
+    product = admin_client.post(
+        "/api/admin/products",
+        json={"section_id": section["id"], "title": "Черновой товар"},
+    ).json()
+    assert product["is_active"] is False
+
+    with make_user_client(999) as player:
+        assert player.get("/api/catalog").json()["sections"] == []
+
+    admin_client.put(
+        f"/api/admin/sections/{section['id']}",
+        json={"title": section["title"], "is_active": True},
+    )
+    with make_user_client(999) as player:
+        public = player.get("/api/catalog").json()
+    assert [row["title"] for row in public["sections"]] == ["Черновик"]
+    assert public["sections"][0]["products"] == []
+
+    admin_client.put(
+        f"/api/admin/products/{product['id']}",
+        json={"title": product["title"], "is_active": True},
+    )
+    with make_user_client(999) as player:
+        public = player.get("/api/catalog").json()
+    assert [row["title"] for row in public["sections"][0]["products"]] == ["Черновой товар"]
+
+
 def test_admin_sections_crud_and_reorder(admin_client, db):
     first = admin_client.post("/api/admin/sections", json={"title": "Первый"}).json()
     second = admin_client.post("/api/admin/sections", json={"title": "Второй"}).json()
@@ -159,7 +190,7 @@ def test_admin_sections_crud_and_reorder(admin_client, db):
 
     renamed = admin_client.put(
         f"/api/admin/sections/{first['id']}",
-        json={"title": "Первый (новый)"},
+        json={"title": "Первый (новый)", "is_active": True},
     )
     assert renamed.status_code == 200
     assert renamed.json()["title"] == "Первый (новый)"

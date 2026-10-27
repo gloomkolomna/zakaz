@@ -41,7 +41,7 @@ class Section(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String, nullable=False)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
-    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    is_active = Column(Boolean, nullable=False, default=False, server_default="0")
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
     products = relationship("Product", back_populates="section", order_by="Product.sort_order")
@@ -62,7 +62,7 @@ class Product(Base):
     video_poster_url = Column(String, nullable=True)
     early_until = Column(DateTime, nullable=True)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
-    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+    is_active = Column(Boolean, nullable=False, default=False, server_default="0")
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
     section = relationship("Section", back_populates="products")

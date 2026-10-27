@@ -168,7 +168,7 @@ export default function ProductEdit() {
           </div>
           <label className="checkbox">
             <input type="checkbox" checked={form.is_active} onChange={(event) => update('is_active', event.target.checked)} />
-            Показывать в каталоге
+            Опубликован — виден в каталоге
           </label>
         </div>
         <div>

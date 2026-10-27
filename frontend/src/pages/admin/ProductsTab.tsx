@@ -40,6 +40,12 @@ export default function ProductsTab() {
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось создать товар'));
   }
 
+  function togglePublish(product: AdminProduct) {
+    api.adminUpdateProduct(product.id, { is_active: !product.is_active })
+      .then(() => loadProducts(sectionId))
+      .catch((e) => setError(e?.response?.data?.detail || 'Не удалось изменить публикацию'));
+  }
+
   if (!sections || products === null) return <Skeleton lines={4} />;
 
   return (
@@ -61,7 +67,7 @@ export default function ProductsTab() {
                 >
                   {sections.map((section) => (
                     <option key={section.id} value={section.id}>
-                      {section.title}{section.is_active ? '' : ' (скрыт)'}
+                      {section.title}{section.is_active ? '' : ' (не опубликован)'}
                     </option>
                   ))}
                 </select>
@@ -81,6 +87,7 @@ export default function ProductsTab() {
                 Добавить товар
               </button>
             </div>
+            <p className="admin-muted">Новый товар создаётся неопубликованным — опубликуйте его после заполнения.</p>
           </div>
 
           {error && <div className="error-text">{error}</div>}
@@ -91,7 +98,7 @@ export default function ProductsTab() {
                 <div className="admin-row-head">
                   <div className="admin-row-title">
                     {product.title}{' '}
-                    {!product.is_active && <span className="pill-cancel">Скрыт</span>}
+                    {!product.is_active && <span className="pill-draft">Не опубликован</span>}
                     {product.is_early && <EarlyBadge until={product.early_until} />}
                   </div>
                   <span className="admin-muted">{formatPrice(product.from_price)}</span>
@@ -104,6 +111,9 @@ export default function ProductsTab() {
                   <Link className="btn secondary" to={`/admin/products/${product.id}`}>
                     Редактировать
                   </Link>
+                  <button className="btn secondary" type="button" onClick={() => togglePublish(product)}>
+                    {product.is_active ? 'Снять с публикации' : 'Опубликовать'}
+                  </button>
                   <Link className="btn secondary" to={`/product/${product.id}`}>
                     Открыть как покупатель
                   </Link>

@@ -6,6 +6,7 @@ After=network.target
 WorkingDirectory=/opt/zakaz/api
 Environment=PATH=/opt/zakaz/api/venv/bin
 Environment=PYTHONPATH=/opt/zakaz/api
+LogsDirectory=zakaz
 ExecStart=/opt/zakaz/api/venv/bin/gunicorn \
     -w 2 \
     -k uvicorn.workers.UvicornWorker \

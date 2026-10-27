@@ -63,14 +63,21 @@ class Product(Base):
     early_until = Column(DateTime, nullable=True)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
     is_active = Column(Boolean, nullable=False, default=False, server_default="0")
+    deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
     section = relationship("Section", back_populates="products")
-    steps = relationship("ProductStep", back_populates="product", order_by="ProductStep.sort_order")
+    steps = relationship(
+        "ProductStep",
+        back_populates="product",
+        order_by="ProductStep.sort_order",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_products_section_sort", "section_id", "sort_order"),
         Index("ix_products_early_until", "early_until"),
+        Index("ix_products_deleted_at", "deleted_at"),
     )
 
 
@@ -90,7 +97,12 @@ class ProductStep(Base):
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
     product = relationship("Product", back_populates="steps")
-    cards = relationship("StepCard", back_populates="step", order_by="StepCard.sort_order")
+    cards = relationship(
+        "StepCard",
+        back_populates="step",
+        order_by="StepCard.sort_order",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_product_steps_product_sort", "product_id", "sort_order"),

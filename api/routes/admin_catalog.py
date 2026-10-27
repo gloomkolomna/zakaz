@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 from deps import require_role
-from models import Product, ProductStep, Section, StepCard, User, utcnow
+from models import Order, OrderItem, Product, ProductStep, Section, StepCard, User, utcnow
 from services.catalog import filled_steps, from_price_map
 from services.early import is_early
 from services.uploads import remove_upload, save_image, save_video
@@ -74,7 +74,7 @@ def _section_out(section: Section) -> dict:
         "title": section.title,
         "sort_order": section.sort_order,
         "is_active": bool(section.is_active),
-        "products_count": len(section.products),
+        "products_count": sum(1 for product in section.products if product.deleted_at is None),
     }
 
 
@@ -199,7 +199,11 @@ def _section(db: Session, section_id: int) -> Section:
 
 
 def _product(db: Session, product_id: int) -> Product:
-    row = db.query(Product).filter(Product.id == product_id).first()
+    row = (
+        db.query(Product)
+        .filter(Product.id == product_id, Product.deleted_at.is_(None))
+        .first()
+    )
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
     return row
@@ -279,7 +283,7 @@ def list_products(
     db: Session = Depends(get_db),
     user: User = Depends(require_role("admin")),
 ):
-    query = db.query(Product)
+    query = db.query(Product).filter(Product.deleted_at.is_(None))
     if section_id is not None:
         query = query.filter(Product.section_id == section_id)
     rows = query.order_by(Product.section_id, Product.sort_order, Product.id).all()
@@ -348,9 +352,32 @@ def update_product(product_id: int, data: ProductIn, db: Session = Depends(get_d
 @router.delete("/products/{product_id}")
 def delete_product(product_id: int, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     row = _product(db, product_id)
-    row.is_active = False
+
+    has_orders = (
+        db.query(Order.id).filter(Order.product_id == product_id).first() is not None
+        or db.query(OrderItem.id)
+        .join(StepCard, StepCard.id == OrderItem.card_id)
+        .join(ProductStep, ProductStep.id == StepCard.step_id)
+        .filter(ProductStep.product_id == product_id)
+        .first()
+        is not None
+    )
+
+    if has_orders:
+        row.is_active = False
+        row.deleted_at = utcnow()
+        db.commit()
+        return {"ok": True, "mode": "archived"}
+
+    remove_upload(row.image_url)
+    remove_upload(row.video_file_url)
+    remove_upload(row.video_poster_url)
+    for step in row.steps:
+        for card in step.cards:
+            remove_upload(card.image_url)
+    db.delete(row)
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "mode": "deleted"}
 
 
 @router.post("/products/{product_id}/image")

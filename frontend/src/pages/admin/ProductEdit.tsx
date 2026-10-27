@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   api,
   type AdminCard,
@@ -23,6 +23,7 @@ interface ProductForm {
 export default function ProductEdit() {
   const { id } = useParams();
   const productId = Number(id);
+  const navigate = useNavigate();
   const [product, setProduct] = useState<AdminProduct | null>(null);
   const [sections, setSections] = useState<AdminSection[]>([]);
   const [form, setForm] = useState<ProductForm | null>(null);
@@ -109,6 +110,13 @@ export default function ProductEdit() {
     api.adminSetEarly(productId, next)
       .then(load)
       .catch(() => setError('Не удалось переключить «до анонса»'));
+  }
+
+  function removeProduct() {
+    if (!window.confirm(`Удалить товар «${product!.title}»? Если у него есть заказы, история сохранится.`)) return;
+    api.adminDeleteProduct(productId)
+      .then(() => navigate('/admin/products'))
+      .catch((e) => setError(e?.response?.data?.detail || 'Не удалось удалить товар'));
   }
 
   function addStep() {
@@ -292,6 +300,19 @@ export default function ProductEdit() {
           <div>
             <button className="btn" type="button" onClick={addStep} disabled={!newStep.title.trim()}>Добавить шаг</button>
           </div>
+        </div>
+      </div>
+
+      <div className="admin-form">
+        <h3 className="section-title">Удаление товара</h3>
+        <p className="admin-muted">
+          Товар без заказов удаляется полностью. Если заказы уже есть, товар
+          архивируется: из каталога и списка он исчезнет, история заказов сохранится.
+        </p>
+        <div>
+          <button className="btn danger" type="button" onClick={removeProduct}>
+            Удалить товар
+          </button>
         </div>
       </div>
     </section>

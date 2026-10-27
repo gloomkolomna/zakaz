@@ -216,12 +216,12 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 ### products
 `id` PK · `section_id` FK → sections (CASCADE) · `title` String ·
 `description` Text · `image_url` String · `sort_order` Int ·
-`is_active` Bool · `created_at` ·
+`is_active` Bool · `deleted_at` DateTime NULL (архив при наличии заказов) · `created_at` ·
 `video_url` String NULL (внешняя ссылка) ·
 `video_file_url` String NULL (загруженный файл) ·
 `video_poster_url` String NULL ·
 `early_until` DateTime NULL (конец окна «до анонса»)
-Индексы: `(section_id, sort_order)`, `(early_until)`.
+Индексы: `(section_id, sort_order)`, `(early_until)`, `(deleted_at)`.
 
 ### donor_cache
 `vk_id` PK · `is_don` Bool · `don_since` String NULL ·
@@ -331,7 +331,7 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 | PUT/DELETE | `/admin/sections/{id}` | правка / мягкое удаление |
 | POST | `/admin/sections/reorder` | `{ids:[...]}` |
 | GET/POST | `/admin/products?section_id=` | список / создание |
-| GET/PUT/DELETE | `/admin/products/{id}` | деталь / правка / мягкое удаление |
+| GET/PUT/DELETE | `/admin/products/{id}` | деталь / правка / удаление: без заказов — hard, с заказами — архив (`deleted_at`) |
 | POST/DELETE | `/admin/products/{id}/image` | загрузка/сброс обложки |
 | POST | `/admin/products/{id}/video` | загрузка файла (multipart, ≤ 100 МБ, mp4/webm/mov) → `{url}` |
 | PUT | `/admin/products/{id}/video-url` | `{url}` — внешняя ссылка; `null` очищает |

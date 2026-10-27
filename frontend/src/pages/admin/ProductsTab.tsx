@@ -46,6 +46,13 @@ export default function ProductsTab() {
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось изменить публикацию'));
   }
 
+  function remove(product: AdminProduct) {
+    if (!window.confirm(`Удалить товар «${product.title}»?`)) return;
+    api.adminDeleteProduct(product.id)
+      .then(() => loadProducts(sectionId))
+      .catch((e) => setError(e?.response?.data?.detail || 'Не удалось удалить товар'));
+  }
+
   if (!sections || products === null) return <Skeleton lines={4} />;
 
   return (
@@ -117,6 +124,9 @@ export default function ProductsTab() {
                   <Link className="btn secondary" to={`/product/${product.id}`}>
                     Открыть как покупатель
                   </Link>
+                  <button className="icon-action red" type="button" onClick={() => remove(product)}>
+                    Удалить
+                  </button>
                 </div>
               </div>
             ))}

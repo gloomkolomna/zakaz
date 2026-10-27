@@ -12,10 +12,10 @@ export default function Logo({ size = 22 }: LogoProps) {
       fill="none"
       aria-hidden="true"
     >
-      <path d="M17.9 5 9.4 13.5" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
-      <ellipse cx="17.4" cy="4.5" rx="1" ry="1.5" transform="rotate(-45 17.4 4.5)" stroke="currentColor" strokeWidth="1.15" />
-      <path d="M16.7 5.9c-1.6-2.8-5.2-3.1-6.9-.8-1.1 1.6-.6 3.5 1 4.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      <path d="M5.4 14.6 9.4 18.6M9.4 14.6 5.4 18.6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M18.6 4.7 10.8 12.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      <ellipse cx="18.1" cy="4.2" rx="0.85" ry="1.35" transform="rotate(-45 18.1 4.2)" stroke="currentColor" strokeWidth="1.05" />
+      <path d="M17.6 4.9C16.2 2.4 13.2 2 11.7 3.6c-1.1 1.2-.8 3 .5 3.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M4.6 15.2 9.4 20M9.4 15.2 4.6 20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }

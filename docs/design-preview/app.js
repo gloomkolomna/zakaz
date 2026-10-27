@@ -6,10 +6,10 @@ const CROSS = (size = 12, color = 'currentColor', w = 2) =>
 const CHEVRON = `<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 const LOGO = (size = 22) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">
-  <path d="M17.9 5 9.4 13.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
-  <ellipse cx="17.4" cy="4.5" rx="1" ry="1.5" transform="rotate(-45 17.4 4.5)" fill="none" stroke="currentColor" stroke-width="1.15"/>
-  <path d="M16.7 5.9c-1.6-2.8-5.2-3.1-6.9-.8-1.1 1.6-.6 3.5 1 4.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-  <path d="M5.4 14.6 9.4 18.6M9.4 14.6 5.4 18.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+  <path d="M18.6 4.7 10.8 12.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+  <ellipse cx="18.1" cy="4.2" rx="0.85" ry="1.35" transform="rotate(-45 18.1 4.2)" fill="none" stroke="currentColor" stroke-width="1.05"/>
+  <path d="M17.6 4.9C16.2 2.4 13.2 2 11.7 3.6c-1.1 1.2-.8 3 .5 3.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M4.6 15.2 9.4 20M9.4 15.2 4.6 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 </svg>`;
 const CHECK = `<svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true" class="check-mark"><path d="M12 30l12 12 20-26" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
 

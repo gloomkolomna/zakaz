@@ -7,7 +7,7 @@ import io
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy import func, or_
+from sqlalchemy import String, cast, func, or_
 from sqlalchemy.orm import Session, selectinload
 
 from db import get_db
@@ -37,6 +37,7 @@ def _base_query(
     db: Session,
     section_id: int | None,
     product_id: int | None,
+    buyer_id: int | None,
     date_from: datetime.date | None,
     date_to: datetime.date | None,
     q: str | None,
@@ -50,6 +51,8 @@ def _base_query(
         query = query.join(Product, Product.id == Order.product_id).filter(Product.section_id == section_id)
     if product_id is not None:
         query = query.filter(Order.product_id == product_id)
+    if buyer_id is not None:
+        query = query.filter(Order.user_id == buyer_id)
     if date_from is not None:
         query = query.filter(Order.created_at >= msk_day_start_utc(date_from))
     if date_to is not None:
@@ -82,6 +85,7 @@ def _export_rows(
     db: Session,
     section_id: int | None,
     product_id: int | None,
+    buyer_id: int | None,
     date_from: datetime.date | None,
     date_to: datetime.date | None,
     q: str | None,
@@ -91,7 +95,7 @@ def _export_rows(
     cancel_unread: int,
 ):
     base = _base_query(
-        db, section_id, product_id, date_from, date_to, q,
+        db, section_id, product_id, buyer_id, date_from, date_to, q,
         unread, order_status, queue_only, cancel_unread,
     )
     rows = (
@@ -106,6 +110,7 @@ def _export_rows(
 def list_orders(
     section_id: int | None = None,
     product_id: int | None = None,
+    buyer_id: int | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
     q: str | None = None,
@@ -122,7 +127,7 @@ def list_orders(
     end = _date(date_to, "Дата по")
     limit = max(1, min(limit, 200))
     offset = max(0, offset)
-    base = _base_query(db, section_id, product_id, start, end, q, unread, status_filter, queue, cancel_unread)
+    base = _base_query(db, section_id, product_id, buyer_id, start, end, q, unread, status_filter, queue, cancel_unread)
 
     total = base.count()
     summary = {
@@ -156,6 +161,7 @@ def list_orders(
 def export_orders(
     section_id: int | None = None,
     product_id: int | None = None,
+    buyer_id: int | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
     q: str | None = None,
@@ -169,7 +175,7 @@ def export_orders(
     start = _date(date_from, "Дата с")
     end = _date(date_to, "Дата по")
     rows, positions = _export_rows(
-        db, section_id, product_id, start, end, q,
+        db, section_id, product_id, buyer_id, start, end, q,
         unread, status_filter, queue, cancel_unread,
     )
 
@@ -208,6 +214,7 @@ def export_orders(
 def export_orders_pdf(
     section_id: int | None = None,
     product_id: int | None = None,
+    buyer_id: int | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
     q: str | None = None,
@@ -223,7 +230,7 @@ def export_orders_pdf(
     start = _date(date_from, "Дата с")
     end = _date(date_to, "Дата по")
     rows, positions = _export_rows(
-        db, section_id, product_id, start, end, q,
+        db, section_id, product_id, buyer_id, start, end, q,
         unread, status_filter, queue, cancel_unread,
     )
     return Response(
@@ -351,9 +358,34 @@ def get_logs(
 
 
 @router.get("/players")
-def list_players(db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
-    rows = db.query(User).order_by(User.created_at.desc()).limit(500).all()
-    flags = donor_flags(db, [row.vk_id for row in rows])
+def list_players(
+    q: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    query = db.query(User)
+    value = (q or "").strip()
+    if value:
+        term = f"%{value}%"
+        query = query.filter(or_(
+            User.display_name.ilike(term),
+            cast(User.vk_id, String).ilike(term),
+        ))
+    rows = query.order_by(User.created_at.desc()).limit(500).all()
+    ids = [row.vk_id for row in rows]
+    flags = donor_flags(db, ids)
+    counts = dict(
+        db.query(Order.user_id, func.count(Order.id))
+        .filter(Order.user_id.in_(ids))
+        .group_by(Order.user_id)
+        .all()
+    ) if ids else {}
+    last = dict(
+        db.query(Order.user_id, func.max(Order.created_at))
+        .filter(Order.user_id.in_(ids))
+        .group_by(Order.user_id)
+        .all()
+    ) if ids else {}
     return [
         {
             "vk_id": row.vk_id,
@@ -362,9 +394,54 @@ def list_players(db: Session = Depends(get_db), user: User = Depends(require_rol
             "status": row.status,
             "is_donor": bool(row.role == "admin" or flags.get(row.vk_id)),
             "donor_exempt": bool(row.donor_exempt),
+            "orders_count": counts.get(row.vk_id, 0),
+            "last_order_at": last[row.vk_id].isoformat() if last.get(row.vk_id) else None,
         }
         for row in rows
     ]
+
+
+@router.get("/players/{vk_id}")
+def get_player(
+    vk_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    target = db.query(User).filter(User.vk_id == vk_id).first()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Заказчик не найден")
+
+    orders = (
+        db.query(Order)
+        .filter(Order.user_id == vk_id)
+        .order_by(Order.created_at.desc(), Order.id.desc())
+        .limit(200)
+        .all()
+    )
+    orders_total = db.query(func.count(Order.id)).filter(Order.user_id == vk_id).scalar() or 0
+    orders_sum = int(db.query(func.coalesce(func.sum(Order.total), 0)).filter(Order.user_id == vk_id).scalar() or 0)
+    queue_count = db.query(func.count(Order.id)).filter(Order.user_id == vk_id, Order.status == "new").scalar() or 0
+    flags = donor_flags(db, [vk_id])
+    player = {
+        "vk_id": target.vk_id,
+        "display_name": target.display_name or f"Покупатель {target.vk_id}",
+        "role": target.role,
+        "status": target.status,
+        "is_donor": bool(target.role == "admin" or flags.get(target.vk_id)),
+        "donor_exempt": bool(target.donor_exempt),
+        "orders_count": orders_total,
+        "last_order_at": orders[0].created_at.isoformat() if orders else None,
+    }
+    positions = queue_map(db)
+    return {
+        "player": player,
+        "orders": [order_brief(db, order, positions) for order in orders],
+        "summary": {
+            "count": orders_total,
+            "queue": queue_count,
+            "sum": orders_sum,
+        },
+    }
 
 
 class DonorExemptIn(BaseModel):

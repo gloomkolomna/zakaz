@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { api, type AdminPlayer } from '../../api/endpoints';
 import Skeleton from '../../components/Skeleton';
 
@@ -6,14 +7,28 @@ export default function PlayersTab() {
   const [players, setPlayers] = useState<AdminPlayer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [q, setQ] = useState('');
 
-  function load() {
-    api.adminPlayers()
+  function load(search = q) {
+    setError(null);
+    api.adminPlayers(search.trim() || undefined)
       .then(setPlayers)
       .catch(() => setError('Не удалось загрузить заказчиков'));
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    void load('');
+  }, []);
+
+  function search(event: FormEvent) {
+    event.preventDefault();
+    load(q);
+  }
+
+  function resetSearch() {
+    setQ('');
+    load('');
+  }
 
   function toggleExempt(player: AdminPlayer) {
     api.adminSetDonorExempt(player.vk_id, !player.donor_exempt)
@@ -36,6 +51,20 @@ export default function PlayersTab() {
 
   return (
     <section>
+      <form className="admin-filters" onSubmit={search}>
+        <div className="field">
+          <label htmlFor="player-q">Поиск по ФИО или VK ID</label>
+          <input
+            id="player-q"
+            value={q}
+            onChange={(event) => setQ(event.target.value)}
+            placeholder="Например, Иван или 400977"
+          />
+        </div>
+        <button className="btn secondary" type="submit">Найти</button>
+        {q && <button className="btn secondary" type="button" onClick={resetSearch}>Сбросить</button>}
+      </form>
+
       <div className="admin-actions" style={{ marginBottom: 16 }}>
         <button className="btn secondary" type="button" onClick={sync} disabled={syncing}>
           {syncing ? 'Синхронизирую…' : 'Синхронизировать донов'}
@@ -47,18 +76,25 @@ export default function PlayersTab() {
         {players.map((player) => (
           <div className="admin-row" key={player.vk_id}>
             <div className="admin-row-head">
-              <div className="admin-row-title">
+              <Link className="admin-row-title" to={`/admin/players/${player.vk_id}`}>
                 {player.display_name} <span className="admin-muted">· {player.vk_id}</span>
-              </div>
+              </Link>
               <span className={`oc-status${player.is_donor ? ' red' : ''}`}>
                 {player.is_donor ? 'Дон' : 'Не дон'}
               </span>
             </div>
-            <div className="admin-muted">{player.role} · {player.status}</div>
-            <label className="checkbox">
-              <input type="checkbox" checked={player.donor_exempt} onChange={() => toggleExempt(player)} />
-              Доступ как у дона вручную
-            </label>
+            <div className="admin-muted">
+              {player.role} · {player.status} · {player.orders_count} заказ(ов)
+            </div>
+            <div className="admin-actions">
+              <Link className="btn secondary" to={`/admin/players/${player.vk_id}`}>
+                Заказы заказчика
+              </Link>
+              <label className="checkbox">
+                <input type="checkbox" checked={player.donor_exempt} onChange={() => toggleExempt(player)} />
+                Доступ как у дона вручную
+              </label>
+            </div>
           </div>
         ))}
         {players.length === 0 && <div className="empty">Заказчиков пока нет.</div>}

@@ -194,6 +194,7 @@ export interface AdminOrdersResponse {
 export interface OrderFilters {
   section_id?: number;
   product_id?: number;
+  buyer_id?: number;
   date_from?: string;
   date_to?: string;
   q?: string;
@@ -228,6 +229,18 @@ export interface AdminPlayer {
   status: string;
   is_donor: boolean;
   donor_exempt: boolean;
+  orders_count: number;
+  last_order_at: string | null;
+}
+
+export interface AdminPlayerDetail {
+  player: AdminPlayer;
+  orders: OrderBrief[];
+  summary: {
+    count: number;
+    queue: number;
+    sum: number;
+  };
 }
 
 function paramsOf(filters: OrderFilters): Record<string, string | number> {
@@ -336,7 +349,10 @@ export const api = {
     client.put<AdminTexts>('/admin/texts', data).then((res) => res.data),
   adminLogs: (level?: string) =>
     client.get<AdminLog[]>('/admin/logs', { params: level ? { level } : {} }).then((res) => res.data),
-  adminPlayers: () => client.get<AdminPlayer[]>('/admin/players').then((res) => res.data),
+  adminPlayers: (q?: string) =>
+    client.get<AdminPlayer[]>('/admin/players', { params: q ? { q } : {} }).then((res) => res.data),
+  adminPlayer: (vkId: number) =>
+    client.get<AdminPlayerDetail>(`/admin/players/${vkId}`).then((res) => res.data),
   adminSetDonorExempt: (vkId: number, enabled: boolean) =>
     client.post(`/admin/players/${vkId}/donor-exempt`, { enabled }).then((res) => res.data),
   adminSyncDonors: () =>

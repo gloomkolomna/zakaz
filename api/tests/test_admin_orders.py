@@ -68,6 +68,8 @@ def test_list_filters_summary_and_pagination(admin_client, db):
     assert by_product["total"] == 3
     by_section = admin_client.get(f"/api/admin/orders?section_id={section.id}").json()
     assert by_section["total"] == 3
+    by_buyer = admin_client.get("/api/admin/orders?buyer_id=124").json()
+    assert [item["id"] for item in by_buyer["items"]] == [second_id]
 
     search = admin_client.get("/api/admin/orders?q=Покупатель 124").json()
     assert [item["id"] for item in search["items"]] == [second_id]
@@ -80,6 +82,35 @@ def test_list_filters_summary_and_pagination(admin_client, db):
 
     bad_status = admin_client.get("/api/admin/orders?status=bad")
     assert bad_status.status_code == 400
+
+
+def test_players_search_and_detail(admin_client, db):
+    section, product, card, first_id, second_id, third_id = _make_orders(db)
+    names = {123: "Иван Петров", 124: "Мария Сидорова", 125: "Пётр Орлов"}
+    for vk_id, name in names.items():
+        db.query(User).filter(User.vk_id == vk_id).update({User.display_name: name})
+    db.commit()
+
+    by_name = admin_client.get("/api/admin/players?q=Сидорова").json()
+    assert [row["vk_id"] for row in by_name] == [124]
+    assert by_name[0]["orders_count"] == 1
+
+    by_id = admin_client.get("/api/admin/players?q=125").json()
+    assert [row["vk_id"] for row in by_id] == [125]
+
+    detail = admin_client.get("/api/admin/players/123")
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["player"]["display_name"] == "Иван Петров"
+    assert body["player"]["orders_count"] == 1
+    assert [order["id"] for order in body["orders"]] == [first_id]
+    assert body["summary"]["count"] == 1
+    assert body["summary"]["sum"] == 1000
+
+    assert admin_client.get("/api/admin/players/99999").status_code == 404
+    with make_user_client(999) as player:
+        assert player.get("/api/admin/players").status_code == 403
+        assert player.get("/api/admin/players/123").status_code == 403
 
 
 def test_date_filter_uses_msk_day(admin_client, db):

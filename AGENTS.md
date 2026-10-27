@@ -259,7 +259,7 @@ Git: `https://github.com/gloomkolomna/zakaz`, ветка `main` (`GIT_REMOTE`).
   деплоя. Секреты — в `api/.env` (игнорируется).
 - Этапы 1–3 **реализованы 2026-10-27**: каталог с видео и «до анонса»,
   шаги/карточки, заказы, очередь, отмена, админка, CSV, доноры; миграция
-  `0002_catalog_orders_donors`. `pytest` — 84 passed, `vitest` — 25 passed,
+  `0002_catalog_orders_donors`. `pytest` — 85 passed, `vitest` — 25 passed,
   `tsc`/`vite build` чистые, 360–1000 без горизонтальной прокрутки.
 - Этап 4 выполнен на токенах A: фирменные файлы в `docs/brand/` не поступили,
   поэтому HEX/шрифты/логотип не подменялись; проверены 390, 630×600, 1000×700.
@@ -292,3 +292,5 @@ Git: `https://github.com/gloomkolomna/zakaz`, ветка `main` (`GIT_REMOTE`).
 - Логи в админке: только `level=error` (info/warn скрыты), строка
   раскрывается в полные детали — source, event, method, path, status,
   **VK ID**, client IP, UTC, message, JSON details и stack trace.
+- Заказчики: поиск по ФИО/VK ID, переход в карточку заказчика со списком его
+  заказов; заказы фильтруются по `buyer_id` (VK ID), имя ищется через `q`.

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   api,
   downloadOrdersCsv,
@@ -21,7 +21,14 @@ export default function OrdersTab() {
   const [data, setData] = useState<AdminOrdersResponse | null>(null);
   const [sections, setSections] = useState<AdminSection[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
-  const [filters, setFilters] = useState<OrderFilters>({ limit: LIMIT, offset: 0 });
+  const [searchParams] = useSearchParams();
+  const initialBuyer = searchParams.get('buyer_id') || '';
+  const initialBuyerNumber = Number(initialBuyer);
+  const [filters, setFilters] = useState<OrderFilters>({
+    limit: LIMIT,
+    offset: 0,
+    buyer_id: initialBuyer && Number.isFinite(initialBuyerNumber) ? initialBuyerNumber : undefined,
+  });
   const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('');
   const [queueOnly, setQueueOnly] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -30,6 +37,7 @@ export default function OrdersTab() {
   const [dateTo, setDateTo] = useState('');
   const [sectionId, setSectionId] = useState<number | ''>('');
   const [productId, setProductId] = useState<number | ''>('');
+  const [buyerId, setBuyerId] = useState(initialBuyer);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -76,11 +84,13 @@ export default function OrdersTab() {
   );
 
   function applyFilters(nextStatus: OrderStatus | '' = statusFilter, queue = queueOnly, unread = unreadOnly) {
+    const parsedBuyer = Number(buyerId.trim());
     setFilters({
       status: nextStatus || undefined,
       queue: queue ? 1 : undefined,
       unread: unread ? 1 : undefined,
       q: q.trim() || undefined,
+      buyer_id: buyerId.trim() && Number.isFinite(parsedBuyer) ? parsedBuyer : undefined,
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
       section_id: sectionId === '' ? undefined : sectionId,
@@ -186,6 +196,10 @@ export default function OrdersTab() {
         <div className="field">
           <label htmlFor="order-q">Поиск</label>
           <input id="order-q" value={q} onChange={(event) => setQ(event.target.value)} placeholder="Имя, товар или №" onKeyDown={(event) => event.key === 'Enter' && applyFilters()} />
+        </div>
+        <div className="field">
+          <label htmlFor="order-buyer">Заказчик (VK ID)</label>
+          <input id="order-buyer" inputMode="numeric" value={buyerId} onChange={(event) => setBuyerId(event.target.value)} placeholder="Например, 400977" onKeyDown={(event) => event.key === 'Enter' && applyFilters()} />
         </div>
         <div className="field">
           <label htmlFor="order-from">С даты</label>

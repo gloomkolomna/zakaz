@@ -113,7 +113,7 @@ export default function ProductEdit() {
   }
 
   function removeProduct() {
-    if (!window.confirm(`Удалить товар «${product!.title}»? Если у него есть заказы, история сохранится.`)) return;
+    if (!window.confirm(`Удалить товар «${product!.title}»? Действие необратимо; история заказов сохранится.`)) return;
     api.adminDeleteProduct(productId)
       .then(() => navigate('/admin/products'))
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось удалить товар'));
@@ -306,8 +306,8 @@ export default function ProductEdit() {
       <div className="admin-form">
         <h3 className="section-title">Удаление товара</h3>
         <p className="admin-muted">
-          Товар без заказов удаляется полностью. Если заказы уже есть, товар
-          архивируется: из каталога и списка он исчезнет, история заказов сохранится.
+          Товар удаляется из каталога и админки. История заказов сохранится
+          в снапшотах, поэтому старые заказы не пропадут.
         </p>
         <div>
           <button className="btn danger" type="button" onClick={removeProduct}>

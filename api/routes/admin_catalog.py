@@ -74,7 +74,7 @@ def _section_out(section: Section) -> dict:
         "title": section.title,
         "sort_order": section.sort_order,
         "is_active": bool(section.is_active),
-        "products_count": sum(1 for product in section.products if product.deleted_at is None),
+        "products_count": len(section.products),
     }
 
 
@@ -199,14 +199,43 @@ def _section(db: Session, section_id: int) -> Section:
 
 
 def _product(db: Session, product_id: int) -> Product:
-    row = (
-        db.query(Product)
-        .filter(Product.id == product_id, Product.deleted_at.is_(None))
-        .first()
-    )
+    row = db.query(Product).filter(Product.id == product_id).first()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар не найден")
     return row
+
+
+def _has_orders(db: Session, product_id: int) -> bool:
+    if db.query(Order.id).filter(Order.product_id == product_id).first() is not None:
+        return True
+    return (
+        db.query(OrderItem.id)
+        .join(StepCard, StepCard.id == OrderItem.card_id)
+        .join(ProductStep, ProductStep.id == StepCard.step_id)
+        .filter(ProductStep.product_id == product_id)
+        .first()
+        is not None
+    )
+
+
+def _remove_product_files(product: Product) -> None:
+    remove_upload(product.image_url)
+    remove_upload(product.video_file_url)
+    remove_upload(product.video_poster_url)
+    for step in product.steps:
+        for card in step.cards:
+            remove_upload(card.image_url)
+
+
+def _detach_orders(db, product: Product) -> None:
+    db.query(Order).filter(Order.product_id == product.id).update(
+        {Order.product_id: None}, synchronize_session=False
+    )
+    card_ids = [card.id for step in product.steps for card in step.cards]
+    if card_ids:
+        db.query(OrderItem).filter(OrderItem.card_id.in_(card_ids)).update(
+            {OrderItem.card_id: None}, synchronize_session=False
+        )
 
 
 def _step(db: Session, step_id: int) -> ProductStep:
@@ -272,9 +301,13 @@ def update_section(section_id: int, data: SectionIn, db: Session = Depends(get_d
 @router.delete("/sections/{section_id}")
 def delete_section(section_id: int, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     row = _section(db, section_id)
-    row.is_active = False
+    for product in row.products:
+        if not _has_orders(db, product.id):
+            _remove_product_files(product)
+        _detach_orders(db, product)
+    db.delete(row)
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "mode": "deleted"}
 
 
 @router.get("/products")
@@ -283,7 +316,7 @@ def list_products(
     db: Session = Depends(get_db),
     user: User = Depends(require_role("admin")),
 ):
-    query = db.query(Product).filter(Product.deleted_at.is_(None))
+    query = db.query(Product)
     if section_id is not None:
         query = query.filter(Product.section_id == section_id)
     rows = query.order_by(Product.section_id, Product.sort_order, Product.id).all()
@@ -352,29 +385,10 @@ def update_product(product_id: int, data: ProductIn, db: Session = Depends(get_d
 @router.delete("/products/{product_id}")
 def delete_product(product_id: int, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     row = _product(db, product_id)
-
-    has_orders = (
-        db.query(Order.id).filter(Order.product_id == product_id).first() is not None
-        or db.query(OrderItem.id)
-        .join(StepCard, StepCard.id == OrderItem.card_id)
-        .join(ProductStep, ProductStep.id == StepCard.step_id)
-        .filter(ProductStep.product_id == product_id)
-        .first()
-        is not None
-    )
-
-    if has_orders:
-        row.is_active = False
-        row.deleted_at = utcnow()
-        db.commit()
-        return {"ok": True, "mode": "archived"}
-
-    remove_upload(row.image_url)
-    remove_upload(row.video_file_url)
-    remove_upload(row.video_poster_url)
-    for step in row.steps:
-        for card in step.cards:
-            remove_upload(card.image_url)
+    has_orders = _has_orders(db, product_id)
+    _detach_orders(db, row)
+    if not has_orders:
+        _remove_product_files(row)
     db.delete(row)
     db.commit()
     return {"ok": True, "mode": "deleted"}

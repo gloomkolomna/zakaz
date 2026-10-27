@@ -44,7 +44,12 @@ class Section(Base):
     is_active = Column(Boolean, nullable=False, default=False, server_default="0")
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
-    products = relationship("Product", back_populates="section", order_by="Product.sort_order")
+    products = relationship(
+        "Product",
+        back_populates="section",
+        order_by="Product.sort_order",
+        cascade="all, delete-orphan",
+    )
 
 
 class Product(Base):
@@ -63,7 +68,6 @@ class Product(Base):
     early_until = Column(DateTime, nullable=True)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
     is_active = Column(Boolean, nullable=False, default=False, server_default="0")
-    deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
     section = relationship("Section", back_populates="products")
@@ -77,7 +81,6 @@ class Product(Base):
     __table_args__ = (
         Index("ix_products_section_sort", "section_id", "sort_order"),
         Index("ix_products_early_until", "early_until"),
-        Index("ix_products_deleted_at", "deleted_at"),
     )
 
 

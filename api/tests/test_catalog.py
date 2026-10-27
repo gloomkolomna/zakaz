@@ -202,30 +202,50 @@ def test_delete_product_without_orders_is_hard(admin_client, db):
     assert admin_client.get(f"/api/admin/products/{product_id}").status_code == 404
 
 
-def test_delete_product_with_orders_archives(admin_client, db):
+def test_delete_product_with_orders_deletes_and_keeps_order(admin_client, db):
     section = make_section(db)
     product = make_product(db, section)
     step = make_step(db, product, is_required=True)
     card = make_card(db, step)
+    product_id = product.id
 
     with make_user_client(123) as player:
         order_id = player.post(
             "/api/orders",
-            json={"product_id": product.id, "items": [{"card_id": card.id, "qty": 1}]},
+            json={"product_id": product_id, "items": [{"card_id": card.id, "qty": 1}]},
         ).json()["id"]
 
-    resp = admin_client.delete(f"/api/admin/products/{product.id}")
+    resp = admin_client.delete(f"/api/admin/products/{product_id}")
     assert resp.status_code == 200
-    assert resp.json()["mode"] == "archived"
+    assert resp.json()["mode"] == "deleted"
 
     db.expire_all()
-    row = db.query(Product).filter(Product.id == product.id).first()
-    assert row is not None
-    assert row.deleted_at is not None
-    assert row.is_active is False
-    assert admin_client.get(f"/api/admin/products/{product.id}").status_code == 404
-    assert admin_client.get(f"/api/admin/orders/{order_id}").status_code == 200
-    assert all(item["id"] != product.id for item in admin_client.get("/api/admin/products").json())
+    assert db.query(Product).filter(Product.id == product_id).first() is None
+    order = admin_client.get(f"/api/admin/orders/{order_id}")
+    assert order.status_code == 200
+    assert order.json()["product_id"] is None
+    assert all(item["id"] != product_id for item in admin_client.get("/api/admin/products").json())
+
+
+def test_delete_section_removes_products(admin_client, db):
+    section = make_section(db)
+    product = make_product(db, section)
+    step = make_step(db, product)
+    card = make_card(db, step)
+    section_id = section.id
+    product_id = product.id
+    step_id = step.id
+    card_id = card.id
+
+    resp = admin_client.delete(f"/api/admin/sections/{section_id}")
+    assert resp.status_code == 200
+    assert resp.json()["mode"] == "deleted"
+
+    db.expire_all()
+    assert db.query(Section).filter(Section.id == section_id).first() is None
+    assert db.query(Product).filter(Product.id == product_id).first() is None
+    assert db.query(ProductStep).filter(ProductStep.id == step_id).first() is None
+    assert db.query(StepCard).filter(StepCard.id == card_id).first() is None
 
 
 def test_admin_sections_crud_and_reorder(admin_client, db):
@@ -251,7 +271,7 @@ def test_admin_sections_crud_and_reorder(admin_client, db):
 
     assert admin_client.delete(f"/api/admin/sections/{second['id']}").status_code == 200
     rows = admin_client.get("/api/admin/sections").json()
-    assert rows[0]["is_active"] is False
+    assert [row["id"] for row in rows] == [first["id"]]
     with make_user_client(999) as catalog_client:
         catalog = catalog_client.get("/api/catalog").json()
     assert [section["title"] for section in catalog["sections"]] == ["Первый (новый)"]

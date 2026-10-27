@@ -80,8 +80,9 @@ VK Mini App **«СобериЗаказ»** — каталог-конструкт
 5. **Снапшоты**: в заказе сохраняются название шага, название карточки, цена,
    количество и имя покупателя на момент заказа; правки каталога не
    переписывают историю.
-6. **Удаление** разделов/товаров/шагов/карточек — мягкое (`is_active=0`),
-   если на них есть ссылки в заказах; жёсткое — только для «чистых» записей.
+6. **Удаление** разделов/товаров — фактическое, с каскадом; история заказов
+   сохраняется снапшотами. Шаги/карточки удаляются мягко (`is_active=0`), чтобы
+   не ломать уже отправленные заказы до удаления товара.
 7. **Пустой каталог** — экран «Скоро здесь появятся товары»; товар без шагов
    в каталоге помечается «скоро» и недоступен для сборки.
 8. **Заказ без единой позиции запрещён** — 400, кнопка «Отправить» неактивна.
@@ -216,12 +217,12 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 ### products
 `id` PK · `section_id` FK → sections (CASCADE) · `title` String ·
 `description` Text · `image_url` String · `sort_order` Int ·
-`is_active` Bool · `deleted_at` DateTime NULL (архив при наличии заказов) · `created_at` ·
+`is_active` Bool · `created_at` ·
 `video_url` String NULL (внешняя ссылка) ·
 `video_file_url` String NULL (загруженный файл) ·
 `video_poster_url` String NULL ·
 `early_until` DateTime NULL (конец окна «до анонса»)
-Индексы: `(section_id, sort_order)`, `(early_until)`, `(deleted_at)`.
+Индексы: `(section_id, sort_order)`, `(early_until)`.
 
 ### donor_cache
 `vk_id` PK · `is_don` Bool · `don_since` String NULL ·
@@ -328,10 +329,10 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 | Метод | Путь | Назначение |
 |---|---|---|
 | GET/POST | `/admin/sections` | список / создание |
-| PUT/DELETE | `/admin/sections/{id}` | правка / мягкое удаление |
+| PUT/DELETE | `/admin/sections/{id}` | правка / удаление (каскадом с товарами) |
 | POST | `/admin/sections/reorder` | `{ids:[...]}` |
 | GET/POST | `/admin/products?section_id=` | список / создание |
-| GET/PUT/DELETE | `/admin/products/{id}` | деталь / правка / удаление: без заказов — hard, с заказами — архив (`deleted_at`) |
+| GET/PUT/DELETE | `/admin/products/{id}` | деталь / правка / удаление (история заказов — снапшоты) |
 | POST/DELETE | `/admin/products/{id}/image` | загрузка/сброс обложки |
 | POST | `/admin/products/{id}/video` | загрузка файла (multipart, ≤ 100 МБ, mp4/webm/mov) → `{url}` |
 | PUT | `/admin/products/{id}/video-url` | `{url}` — внешняя ссылка; `null` очищает |
@@ -644,7 +645,7 @@ VK открывает мини-приложение в iframe: на дескто
 2. Гейт: не подписан → 403 `members_only`; подписан → 200; кэш 24 ч;
    admin мимо гейта; сбой VK API (fail-open по кэшу).
 3. Каталог: только активные, порядок сортировки, `from_price`, пустой каталог.
-4. Админ-CRUD: happy, права (player → 403), 404, валидации, мягкое удаление,
+4. Админ-CRUD: happy, права (player → 403), 404, валидации, удаление,
    reorder, загрузка/сброс фото (тип, размер, HEIC).
 5. Заказы: happy, пустой, дубли, чужая карточка, qty границы, single-режим,
    обязательный шаг, сумма, снапшоты, цена из БД, транзакционность,

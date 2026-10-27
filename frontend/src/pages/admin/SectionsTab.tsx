@@ -43,7 +43,7 @@ export default function SectionsTab() {
   }
 
   function remove(row: AdminSection) {
-    if (!window.confirm(`Удалить раздел «${row.title}»?`)) return;
+    if (!window.confirm(`Удалить раздел «${row.title}»? Все товары раздела тоже будут удалены.`)) return;
     api.adminDeleteSection(row.id).then(load).catch(() => setError('Не удалось удалить раздел'));
   }
 
@@ -75,7 +75,7 @@ export default function SectionsTab() {
             Добавить раздел
           </button>
         </div>
-        <p className="admin-muted">Новый раздел создаётся неопубликованным — опубликуйте его, когда будете готовы.</p>
+        <p className="admin-muted">Новый раздел создаётся скрытым — опубликуйте его, когда будете готовы.</p>
       </div>
 
       {error && <div className="error-text">{error}</div>}
@@ -94,7 +94,7 @@ export default function SectionsTab() {
               ) : (
                 <div className="admin-row-title">
                   {row.title}{' '}
-                  {!row.is_active && <span className="pill-draft">Не опубликован</span>}
+                  {!row.is_active && <span className="pill-draft">Скрыт</span>}
                 </div>
               )}
               <span className="admin-muted">{row.products_count} тов.</span>
@@ -121,7 +121,7 @@ export default function SectionsTab() {
                     Переименовать
                   </button>
                   <button className="btn secondary" type="button" onClick={() => toggle(row)}>
-                    {row.is_active ? 'Снять с публикации' : 'Опубликовать'}
+                    {row.is_active ? 'Скрыть' : 'Опубликовать'}
                   </button>
                   <button className="icon-action red" type="button" onClick={() => remove(row)}>
                     Удалить

@@ -265,7 +265,7 @@ Git: `https://github.com/gloomkolomna/zakaz`, ветка `main` (`GIT_REMOTE`).
   поэтому HEX/шрифты/логотип не подменялись; проверены 390, 630×600, 1000×700.
 - Этап 5 подготовлен (`deploy/deploy.sh` с `-recovery`, `backup.sh`, systemd,
   nginx, `docs/DEPLOY.md`); фактический деплой ждёт SSH-доступ
-  `user@belovolovhome.ru` — локального ключа/пароля нет.
+  `root@5.188.26.214` — локального ключа/пароля нет.
 - Антиспам `POST /orders`: не больше `ORDER_RATE_LIMIT_PER_MINUTE` (10)
   заказов в минуту на покупателя, считается по таблице `orders`, админ — мимо;
   ответ 429 `rate_limited` с `Retry-After: 60`.

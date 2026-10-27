@@ -1,6 +1,6 @@
 # Деплой «СобериЗаказ»
 
-Сервер: `user@belovolovhome.ru` (sudo), домен `https://belovolovhome.ru/zakaz/`.
+Сервер: `root@5.188.26.214` (root), домен `https://belovolovhome.ru/zakaz/`.
 Каталог: `/opt/zakaz`, API `127.0.0.1:8006`, БД `api/zakaz.db`, бэкапы
 `/opt/zakaz-backups`, логи `/var/log/zakaz`.
 
@@ -11,9 +11,8 @@
 systemd-юнит и nginx-локейшн.
 
 ```bash
-ssh user@belovolovhome.ru
-sudo mkdir -p /opt/zakaz /var/log/zakaz
-sudo chown -R "$USER":"$USER" /opt/zakaz /var/log/zakaz
+ssh root@5.188.26.214
+mkdir -p /opt/zakaz /var/log/zakaz
 git clone https://github.com/gloomkolomna/zakaz.git /opt/zakaz
 cd /opt/zakaz
 python3 -m venv api/venv
@@ -65,9 +64,9 @@ npm run build
 ## 2. systemd
 
 ```bash
-sudo cp /opt/zakaz/deploy/zakaz-api.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now zakaz-api
+cp /opt/zakaz/deploy/zakaz-api.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now zakaz-api
 systemctl status zakaz-api --no-pager
 curl -fsS http://127.0.0.1:8006/api/
 ```
@@ -78,7 +77,7 @@ curl -fsS http://127.0.0.1:8006/api/
 `/etc/nginx/fastpanel2-sites/belovolovhom_usr/belovolovhome.ru.includes`), затем:
 
 ```bash
-sudo nginx -t && sudo systemctl reload nginx
+nginx -t && systemctl reload nginx
 curl -I https://belovolovhome.ru/zakaz/
 ```
 
@@ -97,16 +96,11 @@ crontab -e
 
 ```bash
 cd /opt/zakaz
-sudo ./deploy/deploy.sh
+./deploy/deploy.sh
 ```
 
-Скрипт запускается от root/sudo, потому что вызывает `systemctl`. Перед
-запуском убедись, что `/opt/zakaz` принадлежит пользователю, от которого
-делается git/npm (иначе появятся root-овые файлы); при необходимости:
-
-```bash
-sudo chown -R "$USER":"$USER" /opt/zakaz
-```
+Ты подключаешься как root, поэтому `sudo` не нужен: скрипт вызывает
+`systemctl` напрямую. Все файлы в `/opt/zakaz` при этом принадлежат root.
 
 Что делает обычный `deploy.sh`:
 
@@ -127,7 +121,7 @@ sudo chown -R "$USER":"$USER" /opt/zakaz
 
 ```bash
 cd /opt/zakaz
-sudo ./deploy/deploy.sh -recovery
+./deploy/deploy.sh -recovery
 ```
 
 Важно: архив содержит `.env` и БД, поэтому `/opt/zakaz-backups` должен быть
@@ -192,7 +186,7 @@ DONUT_API_URL=http://127.0.0.1:8002/api/donor
 После правки `.env`:
 
 ```bash
-sudo systemctl restart zakaz-api
+systemctl restart zakaz-api
 ```
 
 Проверка ключа:

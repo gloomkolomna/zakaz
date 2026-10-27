@@ -6,6 +6,10 @@
 
 ## 1. Первичная установка
 
+`deploy/deploy.sh` — это **обновление уже установленного** проекта. Первый
+разворот делается вручную по этому разделу: скрипт не создаёт venv, `.env`,
+systemd-юнит и nginx-локейшн.
+
 ```bash
 ssh user@belovolovhome.ru
 sudo mkdir -p /opt/zakaz /var/log/zakaz
@@ -16,7 +20,11 @@ python3 -m venv api/venv
 api/venv/bin/pip install -r api/requirements.txt
 ```
 
-Создать `api/.env` (не коммитится):
+Создать `api/.env` (не коммитится). `SECRET_KEY` — новый:
+
+```bash
+echo "SECRET_KEY=$(openssl rand -hex 32)"
+```
 
 ```env
 VK_APP_ID=54856596
@@ -30,8 +38,9 @@ DEV_LOGIN_ENABLED=false
 SECRET_KEY=<openssl rand -hex 32>
 DATABASE_URL=sqlite:///zakaz.db
 FRONTEND_URL=https://belovolovhome.ru/zakaz
-DONUT_API_URL=
-DONUT_API_KEY=
+DONUT_API_URL=https://belovolovhome.ru/krestiki-s-korgi/api/donor
+DONUT_API_KEY=<ключ донат-бота>
+DONUT_TIMEOUT_SECONDS=5
 DONOR_SYNC_INTERVAL_MINUTES=30
 EARLY_ACCESS_HOURS=48
 ORDER_RATE_LIMIT_PER_MINUTE=10
@@ -88,16 +97,41 @@ crontab -e
 
 ```bash
 cd /opt/zakaz
-./deploy/deploy.sh
+sudo ./deploy/deploy.sh
 ```
 
-Скрипт делает tar-бэкап, WAL-safe бэкап БД, `git reset --hard FETCH_HEAD`,
-`alembic upgrade head`, сборку фронта, рестарт, health-check и полный откат
-БД/кода/dist при ошибке. Восстановление из архива:
+Скрипт запускается от root/sudo, потому что вызывает `systemctl`. Перед
+запуском убедись, что `/opt/zakaz` принадлежит пользователю, от которого
+делается git/npm (иначе появятся root-овые файлы); при необходимости:
 
 ```bash
-./deploy/deploy.sh -recovery
+sudo chown -R "$USER":"$USER" /opt/zakaz
 ```
+
+Что делает обычный `deploy.sh`:
+
+1. Запоминает git-ревизию и текущую ревизию Alembic.
+2. Делает полный tar-архив `/opt/zakaz-backups/zakaz_full_*.tar.gz`
+   (ротация 5), WAL-safe бэкап БД в `api/backups/zakaz.db.bak.*` (ротация 10)
+   и копию `frontend/dist`.
+3. `git fetch` + `git reset --hard FETCH_HEAD` — **локальные правки на сервере
+   будут перезаписаны**.
+4. `pip install -r requirements.txt`, `alembic upgrade head` (на пустой БД —
+   `init_db()` + `alembic stamp head`).
+5. `npm install`, `npm run build`, рестарт `zakaz-api`, health-check
+   `http://127.0.0.1:8006/api/` (5 попыток).
+6. При любой ошибке на шагах 3–6: downgrade/бэкап БД, `git reset --hard`
+   к предыдущей ревизии, возврат `dist`, переустановка зависимостей, рестарт.
+
+Восстановление из архива (интерактивно, с бэкапом текущего состояния):
+
+```bash
+cd /opt/zakaz
+sudo ./deploy/deploy.sh -recovery
+```
+
+Важно: архив содержит `.env` и БД, поэтому `/opt/zakaz-backups` должен быть
+закрыт от посторонних (`chmod 700`).
 
 ## 6. VK
 
@@ -105,7 +139,96 @@ cd /opt/zakaz
 и включить приложение в сообществе `206593200`. Мобильная платформа — iframe
 VK WebView; проверить вход подписчиком и не-подписчиком.
 
-## 7. Smoke после деплоя
+`VK_APP_SECRET` и `VK_SERVICE_TOKEN` берутся из настроек VK-приложения;
+сервисный токен нужен для `groups.isMember` (гейт подписки) и `users.get`.
+
+## 7. Доноры и «до анонса»
+
+Проверка донат-бота (он уже отвечает на сервере):
+
+```bash
+curl -fsS https://belovolovhome.ru/krestiki-s-korgi/api/health
+# {"status":"ok","service":"donut-backend"}
+```
+
+Контракт, который ждёт «СобериЗаказ»:
+
+```http
+GET {DONUT_API_URL}/{vk_id}
+X-API-Key: {DONUT_API_KEY}
+```
+
+Успех — `200` и JSON:
+
+```json
+{"vk_id": 795384, "is_don": true, "don_since": "2025-01-01T00:00:00"}
+```
+
+`is_don` обязателен; `don_since` и `updated_at` сохраняются, если пришли.
+Таймаут, не-200 или невалидный JSON не стирают прошлый кэш — доступ остаётся
+по последнему известному значению.
+
+### Что заполнить в `api/.env`
+
+| Переменная | Значение |
+|---|---|
+| `DONUT_API_URL` | `https://belovolovhome.ru/krestiki-s-korgi/api/donor` — **без** `/{vk_id}` на конце; приложение само добавит id |
+| `DONUT_API_KEY` | то же значение `API_KEY`, что в `/opt/donut-backend/.env` (или в `.env` проекта `ДонатБот` на сервере) |
+| `DONUT_TIMEOUT_SECONDS` | `5` (можно не задавать) |
+| `DONOR_SYNC_INTERVAL_MINUTES` | `30` |
+| `EARLY_ACCESS_HOURS` | `48` |
+
+Если донат-бот и «СобериЗаказ» на одном сервере, можно ходить напрямую, без
+nginx/TLS:
+
+```env
+DONUT_API_URL=http://127.0.0.1:8002/api/donor
+```
+
+Порт `8002` — из деплой-плана `ДонатБот` (`donut-backend`). Публичный URL
+удобнее, если бот за другим прокси; главное — API должен быть доступен
+с хоста `zakaz-api` и ключ совпадать.
+
+После правки `.env`:
+
+```bash
+sudo systemctl restart zakaz-api
+```
+
+Проверка ключа:
+
+```bash
+KEY='<DONUT_API_KEY>'
+curl -fsS -H "X-API-Key: $KEY" \
+  https://belovolovhome.ru/krestiki-s-korgi/api/donor/795384
+```
+
+Без ключа endpoint отвечает `403` — это ожидаемо. Неверный ключ в
+`DONUT_API_KEY` выглядит так же: синк молча не обновляет кэш.
+
+### Как это работает в приложении
+
+- При входе не-админа вызывается `sync_user`; результат пишется в
+  `donor_cache` (`is_don`, `don_since`, `updated_at`, `last_synced_at`).
+- Фоновый поток раз в `DONOR_SYNC_INTERVAL_MINUTES` синхронизирует всех
+  не-админов; поток стартует только если заданы и URL, и ключ.
+- `/me` отдаёт `is_donor` и `donor_exempt`; админ всегда считается доном.
+- Товар с `early_until > now`: дон/админ/`donor_exempt` заказывает, остальные
+  видят дату и получают `403 early_access` на `POST /orders`.
+- Если бот недоступен, остаётся последний кэш. Ручной фолбэк — галочка
+  `donor_exempt` во вкладке **«Игроки»** админки.
+- Без `DONUT_API_URL`/`DONUT_API_KEY` приложение работает, но «до анонса»
+  открыто только админу и пользователям с `donor_exempt`.
+
+### Проверка сценария
+
+1. Убедиться, что у тестового VK ID есть донат в боте (или включить
+   `donor_exempt` в админке).
+2. Войти этим VK ID → `GET /api/me` → `"is_donor": true`.
+3. Включить «до анонса» у товара на 48 часов.
+4. Доном — «Собрать заказ» доступна; не-доном — дата и заблокированная CTA.
+
+## 8. Smoke после деплоя
 
 - `/zakaz/` открывается, шрифты и обложки загружаются.
 - Не-подписчик видит экран подписки, подписчик — каталог.

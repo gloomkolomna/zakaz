@@ -100,7 +100,7 @@ export default function LogsTab() {
                     <div><dt>Метод</dt><dd>{log.method || '—'}</dd></div>
                     <div><dt>Путь</dt><dd>{log.path || '—'}</dd></div>
                     <div><dt>Статус</dt><dd>{log.status_code ?? '—'}</dd></div>
-                    <div><dt>Пользователь</dt><dd>{log.user_id ?? '—'}</dd></div>
+                    <div><dt>VK ID</dt><dd>{log.vk_id ?? '—'}</dd></div>
                     <div><dt>IP</dt><dd>{log.client_ip || '—'}</dd></div>
                     <div><dt>Время (UTC)</dt><dd>{log.created_at || '—'}</dd></div>
                   </dl>

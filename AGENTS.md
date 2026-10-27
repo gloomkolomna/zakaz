@@ -290,5 +290,5 @@ Git: `https://github.com/gloomkolomna/zakaz`, ветка `main` (`GIT_REMOTE`).
   favicon и apple-touch-icon; название в настройках VK-приложения меняется
   отдельно на стороне VK.
 - Логи в админке: только `level=error` (info/warn скрыты), строка
-  раскрывается в полные детали — source, event, method, path, status, user,
-  client IP, UTC, message, JSON details и stack trace.
+  раскрывается в полные детали — source, event, method, path, status,
+  **VK ID**, client IP, UTC, message, JSON details и stack trace.

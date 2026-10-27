@@ -342,6 +342,7 @@ def get_logs(
             "message": row.message,
             "details": row.details,
             "user_id": row.user_id,
+            "vk_id": row.user_id,
             "client_ip": row.client_ip,
             "created_at": row.created_at.isoformat() if row.created_at else None,
         }

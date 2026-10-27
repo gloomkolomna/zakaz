@@ -33,7 +33,7 @@ def test_admin_logs_only_errors_with_details(admin_client, db):
         Log(
             source="server", level="error", event="exception",
             method="GET", path="/api/boom", status_code=500,
-            message="Unhandled exception", client_ip="127.0.0.1",
+            message="Unhandled exception", user_id=400977, client_ip="127.0.0.1",
             details='{"traceback": "Traceback: boom"}',
         ),
     ])
@@ -43,6 +43,7 @@ def test_admin_logs_only_errors_with_details(admin_client, db):
     assert len(logs) == 1
     assert logs[0]["level"] == "error"
     assert logs[0]["path"] == "/api/boom"
+    assert logs[0]["vk_id"] == 400977
     assert logs[0]["client_ip"] == "127.0.0.1"
     assert "Traceback" in logs[0]["details"]
 

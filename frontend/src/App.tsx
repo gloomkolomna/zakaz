@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
 import Logo from './components/Logo';
 import MiniAppShell from './components/MiniAppShell';
 import { useSession } from './context/SessionContext';
@@ -8,9 +9,22 @@ import MembersOnly from './pages/MembersOnly';
 import OutsideVk from './pages/OutsideVk';
 
 const Catalog = lazy(() => import('./pages/Catalog'));
+const Product = lazy(() => import('./pages/Product'));
+const Builder = lazy(() => import('./pages/Builder'));
+const Review = lazy(() => import('./pages/Review'));
+const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
 const MyOrders = lazy(() => import('./pages/MyOrders'));
+const OrderDetail = lazy(() => import('./pages/OrderDetail'));
 const Info = lazy(() => import('./pages/Info'));
 const Admin = lazy(() => import('./pages/admin/Admin'));
+const SectionsTab = lazy(() => import('./pages/admin/SectionsTab'));
+const ProductsTab = lazy(() => import('./pages/admin/ProductsTab'));
+const ProductEdit = lazy(() => import('./pages/admin/ProductEdit'));
+const OrdersTab = lazy(() => import('./pages/admin/OrdersTab'));
+const AdminOrderDetail = lazy(() => import('./pages/admin/AdminOrderDetail'));
+const PlayersTab = lazy(() => import('./pages/admin/PlayersTab'));
+const TextsTab = lazy(() => import('./pages/admin/TextsTab'));
+const LogsTab = lazy(() => import('./pages/admin/LogsTab'));
 
 function PageSkeleton() {
   return (
@@ -72,18 +86,35 @@ export default function App() {
 
   return (
     <MiniAppShell>
-      <Suspense fallback={<PageSkeleton />}>
-        <Routes>
-          <Route path="/" element={<Catalog />} />
-          <Route path="/orders" element={<MyOrders />} />
-          <Route path="/info" element={<Info />} />
-          <Route
-            path="/admin"
-            element={user.role === 'admin' ? <Admin /> : <Navigate to="/" replace />}
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<PageSkeleton />}>
+          <Routes>
+            <Route path="/" element={<Catalog />} />
+            <Route path="/product/:id" element={<Product />} />
+            <Route path="/product/:id/build" element={<Builder />} />
+            <Route path="/product/:id/review" element={<Review />} />
+            <Route path="/order/:id/success" element={<OrderSuccess />} />
+            <Route path="/orders" element={<MyOrders />} />
+            <Route path="/orders/:id" element={<OrderDetail />} />
+            <Route path="/info" element={<Info />} />
+            <Route
+              path="/admin"
+              element={user.role === 'admin' ? <Admin /> : <Navigate to="/" replace />}
+            >
+              <Route index element={<Navigate to="sections" replace />} />
+              <Route path="sections" element={<SectionsTab />} />
+              <Route path="products" element={<ProductsTab />} />
+              <Route path="products/:id" element={<ProductEdit />} />
+              <Route path="orders" element={<OrdersTab />} />
+              <Route path="orders/:id" element={<AdminOrderDetail />} />
+              <Route path="players" element={<PlayersTab />} />
+              <Route path="texts" element={<TextsTab />} />
+              <Route path="logs" element={<LogsTab />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </MiniAppShell>
   );
 }

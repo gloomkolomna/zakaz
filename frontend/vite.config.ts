@@ -9,6 +9,9 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5177,
     strictPort: true,
+    watch: {
+      ignored: ['**/*.tmpdir/**', '**/.*.tmpdir/**'],
+    },
     proxy: {
       '/zakaz/api': {
         target: 'http://127.0.0.1:8006',

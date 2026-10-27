@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api, type AdminSection } from '../../api/endpoints';
+import { useConfirm } from '../../components/ConfirmProvider';
 import Skeleton from '../../components/Skeleton';
 
 export default function SectionsTab() {
+  const confirm = useConfirm();
   const [sections, setSections] = useState<AdminSection[] | null>(null);
   const [title, setTitle] = useState('');
   const [editing, setEditing] = useState<number | null>(null);
@@ -42,8 +44,14 @@ export default function SectionsTab() {
       .catch(() => setError('Не удалось изменить раздел'));
   }
 
-  function remove(row: AdminSection) {
-    if (!window.confirm(`Удалить раздел «${row.title}»? Все товары раздела тоже будут удалены.`)) return;
+  async function remove(row: AdminSection) {
+    const ok = await confirm({
+      title: `Удалить раздел «${row.title}»?`,
+      text: 'Все товары раздела тоже будут удалены. История заказов сохранится.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     api.adminDeleteSection(row.id).then(load).catch(() => setError('Не удалось удалить раздел'));
   }
 

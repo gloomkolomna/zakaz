@@ -10,6 +10,7 @@ import {
 import { formatEarlyUntil, formatPrice } from '../../api/money';
 import { mediaUrl } from '../../api/media';
 import BackLink from '../../components/BackLink';
+import { useConfirm } from '../../components/ConfirmProvider';
 import Skeleton from '../../components/Skeleton';
 
 interface ProductForm {
@@ -24,6 +25,7 @@ export default function ProductEdit() {
   const { id } = useParams();
   const productId = Number(id);
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [product, setProduct] = useState<AdminProduct | null>(null);
   const [sections, setSections] = useState<AdminSection[]>([]);
   const [form, setForm] = useState<ProductForm | null>(null);
@@ -100,8 +102,14 @@ export default function ProductEdit() {
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось сохранить ссылку'));
   }
 
-  function deleteVideo() {
-    if (!window.confirm('Удалить видео и ссылку?')) return;
+  async function deleteVideo() {
+    const ok = await confirm({
+      title: 'Удалить видео?',
+      text: 'Ссылка и загруженный файл будут удалены.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     api.adminDeleteVideo(productId).then(load).catch(() => setError('Не удалось удалить видео'));
   }
 
@@ -112,8 +120,14 @@ export default function ProductEdit() {
       .catch(() => setError('Не удалось переключить «до анонса»'));
   }
 
-  function removeProduct() {
-    if (!window.confirm(`Удалить товар «${product!.title}»? Действие необратимо; история заказов сохранится.`)) return;
+  async function removeProduct() {
+    const ok = await confirm({
+      title: `Удалить товар «${product!.title}»?`,
+      text: 'Действие необратимо. История заказов сохранится в снапшотах.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     api.adminDeleteProduct(productId)
       .then(() => navigate('/admin/products'))
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось удалить товар'));
@@ -334,6 +348,7 @@ function StepEditor({
   onChanged: () => void;
   onError: (message: string) => void;
 }) {
+  const confirm = useConfirm();
   const [cards, setCards] = useState<AdminCard[] | null>(null);
   const [form, setForm] = useState({
     title: step.title,
@@ -362,6 +377,17 @@ function StepEditor({
         onError('');
       })
       .catch((e) => onError(e?.response?.data?.detail || 'Не удалось сохранить шаг'));
+  }
+
+  async function removeStep() {
+    const ok = await confirm({
+      title: `Удалить шаг «${step.title}»?`,
+      text: 'Карточки этого шага тоже будут удалены.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
+    api.adminDeleteStep(step.id).then(onChanged).catch(() => onError('Не удалось удалить шаг'));
   }
 
   function addCard() {
@@ -397,7 +423,7 @@ function StepEditor({
           <button className="icon-action" type="button" onClick={() => api.adminUpdateStep(step.id, { is_active: !step.is_active }).then(onChanged)}>
             {step.is_active ? 'Скрыть' : 'Показать'}
           </button>
-          <button className="icon-action red" type="button" onClick={() => window.confirm(`Удалить шаг «${step.title}»?`) && api.adminDeleteStep(step.id).then(onChanged)}>
+          <button className="icon-action red" type="button" onClick={removeStep}>
             Удалить
           </button>
         </div>
@@ -471,6 +497,7 @@ function CardRow({
   onChanged: () => void;
   onError: (message: string) => void;
 }) {
+  const confirm = useConfirm();
   const [form, setForm] = useState({
     title: card.title,
     description: card.description || '',
@@ -478,6 +505,17 @@ function CardRow({
     max_qty: card.max_qty,
     is_active: card.is_active,
   });
+
+  async function removeCard() {
+    const ok = await confirm({
+      title: `Удалить карточку «${card.title}»?`,
+      text: 'История уже отправленных заказов сохранится.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
+    api.adminDeleteCard(card.id).then(onChanged).catch(() => onError('Не удалось удалить карточку'));
+  }
 
   function save() {
     api.adminUpdateCard(card.id, form)
@@ -505,7 +543,7 @@ function CardRow({
             Фото
             <input type="file" accept="image/*" hidden onChange={(event) => upload(event.target.files?.[0])} />
           </label>
-          <button className="icon-action red" type="button" onClick={() => window.confirm(`Удалить карточку «${card.title}»?`) && api.adminDeleteCard(card.id).then(onChanged)}>
+          <button className="icon-action red" type="button" onClick={removeCard}>
             Удалить
           </button>
         </div>

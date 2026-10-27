@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { api, type AdminProduct, type AdminSection } from '../../api/endpoints';
 import { formatPrice } from '../../api/money';
 import EarlyBadge from '../../components/EarlyBadge';
+import { useConfirm } from '../../components/ConfirmProvider';
 import Skeleton from '../../components/Skeleton';
 
 export default function ProductsTab() {
+  const confirm = useConfirm();
   const [sections, setSections] = useState<AdminSection[] | null>(null);
   const [products, setProducts] = useState<AdminProduct[] | null>(null);
   const [sectionId, setSectionId] = useState<number | ''>('');
@@ -46,8 +48,14 @@ export default function ProductsTab() {
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось изменить публикацию'));
   }
 
-  function remove(product: AdminProduct) {
-    if (!window.confirm(`Удалить товар «${product.title}»? Действие необратимо; история заказов сохранится.`)) return;
+  async function remove(product: AdminProduct) {
+    const ok = await confirm({
+      title: `Удалить товар «${product.title}»?`,
+      text: 'Действие необратимо. История заказов сохранится.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
     api.adminDeleteProduct(product.id)
       .then(() => loadProducts(sectionId))
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось удалить товар'));

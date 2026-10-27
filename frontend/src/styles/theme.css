@@ -130,7 +130,7 @@ a { color: inherit; }
   letter-spacing: -0.01em;
 }
 
-.brand svg { color: var(--red); flex: none; }
+.brand-logo { color: var(--red); flex: none; }
 
 .top-title {
   font-size: 13px;
@@ -1141,7 +1141,8 @@ h1 {
 
 .brand-logo {
   flex: none;
-  color: var(--red);
+  border-radius: 5px;
+  object-fit: cover;
 }
 
 a.brand:active {

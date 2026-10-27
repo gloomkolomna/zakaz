@@ -54,7 +54,7 @@ def _footer(canvas, doc) -> None:
     canvas.saveState()
     canvas.setFont("ZakazSans", 7.5)
     canvas.setFillColor(MUTED)
-    canvas.drawString(14 * mm, 8 * mm, "СобериЗаказ")
+    canvas.drawString(14 * mm, 8 * mm, "Магазин игр")
     canvas.drawRightString(A4[0] - 14 * mm, 8 * mm, f"Стр. {doc.page}")
     canvas.restoreState()
 
@@ -87,7 +87,7 @@ def render_orders_pdf(orders, positions: dict[int, int]) -> bytes:
     total_sum = sum(order.total for order in orders)
 
     story = [
-        Paragraph("Заказы — СобериЗаказ", title_style),
+        Paragraph("Заказы — Магазин игр", title_style),
         Spacer(1, 2 * mm),
         Paragraph(f"Сформировано {now} (МСК) · заказов: {len(orders)}", subtitle_style),
         Spacer(1, 5 * mm),

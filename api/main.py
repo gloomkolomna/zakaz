@@ -31,7 +31,7 @@ from services.donor import start_donor_sync_thread
 start_donor_sync_thread()
 
 
-app = FastAPI(title="СобериЗаказ API")
+app = FastAPI(title="Магазин игр API")
 app.state.session_factory = SessionLocal
 
 app.add_middleware(

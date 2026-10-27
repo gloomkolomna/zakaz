@@ -21,7 +21,7 @@ export default function MembersOnly() {
       <header className="topbar">
         <div className="brand">
           <Logo />
-          <span>СобериЗаказ</span>
+          <span>Магазин игр</span>
         </div>
       </header>
       <main className="page">

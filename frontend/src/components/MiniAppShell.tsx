@@ -47,9 +47,9 @@ export default function MiniAppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app">
       <header className="topbar">
-        <NavLink to="/" className="brand" aria-label="СобериЗаказ — в каталог">
+        <NavLink to="/" className="brand" aria-label="Магазин игр — в каталог">
           <Logo />
-          <span>СобериЗаказ</span>
+          <span>Магазин игр</span>
         </NavLink>
         <button
           className="icon-btn"
@@ -74,7 +74,7 @@ export default function MiniAppShell({ children }: { children: ReactNode }) {
             <div className="menu-sheet-head">
               <div className="brand">
                 <Logo />
-                <span>СобериЗаказ</span>
+                <span>Магазин игр</span>
               </div>
               <button
                 className="icon-btn"

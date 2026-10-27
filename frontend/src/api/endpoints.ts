@@ -41,6 +41,8 @@ export interface CatalogSection {
 }
 
 export interface Catalog {
+  title: string;
+  description: string;
   sections: CatalogSection[];
 }
 
@@ -82,6 +84,11 @@ export interface InfoTexts {
   payment: string;
   contacts: string;
   privacy: string;
+}
+
+export interface AdminTexts extends InfoTexts {
+  catalog_title: string;
+  catalog_description: string;
 }
 
 export interface OrderItem {
@@ -322,9 +329,9 @@ export const api = {
   adminCancelSeen: (id: number) =>
     client.post<OrderDetail>(`/admin/orders/${id}/cancel-seen`).then((res) => res.data),
 
-  adminTexts: () => client.get<InfoTexts>('/admin/texts').then((res) => res.data),
-  adminSaveTexts: (data: InfoTexts) =>
-    client.put<InfoTexts>('/admin/texts', data).then((res) => res.data),
+  adminTexts: () => client.get<AdminTexts>('/admin/texts').then((res) => res.data),
+  adminSaveTexts: (data: AdminTexts) =>
+    client.put<AdminTexts>('/admin/texts', data).then((res) => res.data),
   adminLogs: (level?: string) =>
     client.get<AdminLog[]>('/admin/logs', { params: level ? { level } : {} }).then((res) => res.data),
   adminPlayers: () => client.get<AdminPlayer[]>('/admin/players').then((res) => res.data),

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { api, type InfoTexts } from '../../api/endpoints';
+import { api, type AdminTexts } from '../../api/endpoints';
 import Skeleton from '../../components/Skeleton';
 
-const BLOCKS: { key: keyof InfoTexts; title: string }[] = [
+const BLOCKS: { key: keyof AdminTexts; title: string; multiline?: boolean }[] = [
+  { key: 'catalog_title', title: 'Главная: заголовок', multiline: false },
+  { key: 'catalog_description', title: 'Главная: описание' },
   { key: 'delivery', title: 'Доставка' },
   { key: 'payment', title: 'Оплата' },
   { key: 'contacts', title: 'Контакты' },
@@ -10,7 +12,7 @@ const BLOCKS: { key: keyof InfoTexts; title: string }[] = [
 ];
 
 export default function TextsTab() {
-  const [texts, setTexts] = useState<InfoTexts | null>(null);
+  const [texts, setTexts] = useState<AdminTexts | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -38,12 +40,21 @@ export default function TextsTab() {
         {BLOCKS.map((block) => (
           <div className="field" key={block.key}>
             <label htmlFor={`text-${block.key}`}>{block.title}</label>
-            <textarea
-              id={`text-${block.key}`}
-              value={texts[block.key]}
-              onChange={(event) => setTexts({ ...texts, [block.key]: event.target.value })}
-              placeholder="Текст с переносами строк"
-            />
+            {block.multiline === false ? (
+              <input
+                id={`text-${block.key}`}
+                value={texts[block.key]}
+                onChange={(event) => setTexts({ ...texts, [block.key]: event.target.value })}
+                placeholder="Заголовок главной страницы"
+              />
+            ) : (
+              <textarea
+                id={`text-${block.key}`}
+                value={texts[block.key]}
+                onChange={(event) => setTexts({ ...texts, [block.key]: event.target.value })}
+                placeholder="Текст с переносами строк"
+              />
+            )}
           </div>
         ))}
         <div>

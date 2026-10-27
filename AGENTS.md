@@ -259,7 +259,7 @@ Git: `https://github.com/gloomkolomna/zakaz`, ветка `main` (`GIT_REMOTE`).
   деплоя. Секреты — в `api/.env` (игнорируется).
 - Этапы 1–3 **реализованы 2026-10-27**: каталог с видео и «до анонса»,
   шаги/карточки, заказы, очередь, отмена, админка, CSV, доноры; миграция
-  `0002_catalog_orders_donors`. `pytest` — 76 passed, `vitest` — 25 passed,
+  `0002_catalog_orders_donors`. `pytest` — 78 passed, `vitest` — 25 passed,
   `tsc`/`vite build` чистые, 360–1000 без горизонтальной прокрутки.
 - Этап 4 выполнен на токенах A: фирменные файлы в `docs/brand/` не поступили,
   поэтому HEX/шрифты/логотип не подменялись; проверены 390, 630×600, 1000×700.
@@ -269,3 +269,6 @@ Git: `https://github.com/gloomkolomna/zakaz`, ветка `main` (`GIT_REMOTE`).
 - Антиспам `POST /orders`: не больше `ORDER_RATE_LIMIT_PER_MINUTE` (10)
   заказов в минуту на покупателя, считается по таблице `orders`, админ — мимо;
   ответ 429 `rate_limited` с `Retry-After: 60`.
+- Заголовок и описание главной редактируются в админке → «Тексты»
+  (`text.catalog_title`, `text.catalog_description`, дефолты в
+  `services/texts.py`). Раздел управления называется «Заказчики».

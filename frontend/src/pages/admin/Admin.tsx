@@ -4,7 +4,7 @@ const TABS = [
   { to: 'sections', label: 'Разделы' },
   { to: 'products', label: 'Товары' },
   { to: 'orders', label: 'Заказы' },
-  { to: 'players', label: 'Игроки' },
+  { to: 'players', label: 'Заказчики' },
   { to: 'texts', label: 'Тексты' },
   { to: 'logs', label: 'Логи' },
 ];

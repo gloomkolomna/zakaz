@@ -43,7 +43,10 @@ def test_catalog_requires_auth(client):
 def test_catalog_empty(player_client):
     resp = player_client.get("/api/catalog")
     assert resp.status_code == 200
-    assert resp.json() == {"sections": []}
+    data = resp.json()
+    assert data["sections"] == []
+    assert data["title"] == "Наборы для вышивки"
+    assert data["description"].startswith("Трекеры на год и для хобби")
 
 
 def test_catalog_orders_and_hides_inactive(player_client, db):
@@ -116,6 +119,36 @@ def test_info_public(client):
     resp = client.get("/api/info")
     assert resp.status_code == 200
     assert resp.json() == {"delivery": "", "payment": "", "contacts": "", "privacy": ""}
+
+
+def test_catalog_header_texts_editable(admin_client, db):
+    with make_user_client(999) as player:
+        data = player.get("/api/catalog").json()
+    assert data["title"] == "Наборы для вышивки"
+    assert data["description"].startswith("Трекеры на год и для хобби")
+
+    saved = admin_client.put(
+        "/api/admin/texts",
+        json={
+            "catalog_title": "Мои наборы",
+            "catalog_description": "Собираем вручную, по шагам.",
+            "delivery": "Доставка",
+            "payment": "Оплата",
+            "contacts": "Контакты",
+            "privacy": "Политика",
+        },
+    )
+    assert saved.status_code == 200
+    assert saved.json()["catalog_title"] == "Мои наборы"
+    assert saved.json()["catalog_description"] == "Собираем вручную, по шагам."
+
+    with make_user_client(999) as player:
+        data = player.get("/api/catalog").json()
+        info = player.get("/api/info").json()
+    assert data["title"] == "Мои наборы"
+    assert data["description"] == "Собираем вручную, по шагам."
+    assert "catalog_title" not in info
+    assert "catalog_description" not in info
 
 
 def test_admin_sections_crud_and_reorder(admin_client, db):

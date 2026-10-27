@@ -8,7 +8,7 @@ from deps import get_current_user
 from models import Product, Section, User
 from services.catalog import filled_steps, from_price_map
 from services.early import can_order, is_early
-from services.texts import get_texts
+from services.texts import get_catalog_texts, get_texts
 
 router = APIRouter(prefix="/api", tags=["catalog"])
 
@@ -41,7 +41,10 @@ def catalog(db: Session = Depends(get_db), user: User = Depends(get_current_user
         if product.is_active
     ]
     prices = from_price_map(db, product_ids)
+    texts = get_catalog_texts(db)
     return {
+        "title": texts["catalog_title"],
+        "description": texts["catalog_description"],
         "sections": [
             {
                 "id": section.id,

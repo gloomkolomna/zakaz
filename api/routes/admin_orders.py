@@ -246,24 +246,26 @@ def cancel_seen(order_id: int, db: Session = Depends(get_db), user: User = Depen
 
 
 class TextIn(BaseModel):
-    delivery: str = ""
-    payment: str = ""
-    contacts: str = ""
-    privacy: str = ""
+    delivery: str | None = None
+    payment: str | None = None
+    contacts: str | None = None
+    privacy: str | None = None
+    catalog_title: str | None = None
+    catalog_description: str | None = None
 
 
 @router.get("/texts")
 def get_admin_texts(db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
-    from services.texts import get_texts
+    from services.texts import get_all_texts
 
-    return get_texts(db)
+    return get_all_texts(db)
 
 
 @router.put("/texts")
 def put_admin_texts(data: TextIn, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     from services.texts import set_texts
 
-    return set_texts(db, data.model_dump())
+    return set_texts(db, data.model_dump(exclude_unset=True))
 
 
 @router.get("/logs")
@@ -326,7 +328,7 @@ def set_donor_exempt(
 ):
     target = db.query(User).filter(User.vk_id == vk_id).first()
     if target is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Игрок не найден")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Заказчик не найден")
     target.donor_exempt = data.enabled
     db.commit()
     return {"vk_id": target.vk_id, "donor_exempt": bool(target.donor_exempt)}

@@ -39,13 +39,13 @@ export default function Catalog() {
   }
 
   const sections = (data?.sections || []).filter((section) => section.products.length > 0);
+  const title = data?.title || 'Наборы для вышивки';
+  const description = data?.description || 'Трекеры на год и для хобби. Собираете набор по шагам — цена складывается сама.';
 
   return (
     <main className="page">
-      <h1>Наборы для вышивки</h1>
-      <p className="lede">
-        Трекеры на год и для хобби. Собираете набор по шагам — цена складывается сама.
-      </p>
+      <h1>{title}</h1>
+      <p className="lede">{description}</p>
 
       {sections.length === 0 ? (
         <section className="section" aria-label="Каталог">

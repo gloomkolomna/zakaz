@@ -185,9 +185,9 @@ VK Mini App **«СобериЗаказ»** — каталог-конструкт
    строки кнопка «Выполнить»; горящая плашка отмены сверху — «Отмена заказа №N»
    с кнопкой «Понятно», горит до подтверждения. Фильтры, поиск, карточка
    заказа, «прочитан», экспорт CSV.
-6. Игроки: статус дона (из кеша), галочка `donor_exempt` — ручной фолбэк, если
+6. Заказчики: статус дона (из кеша), галочка `donor_exempt` — ручной фолбэк, если
    донат-бот недоступен.
-7. Тексты: доставка/оплата/контакты/политика ПД.
+7. Тексты: заголовок и описание главной, доставка/оплата/контакты/политика ПД.
 8. Логи: 4xx/5xx и ошибки.
 
 ---
@@ -260,8 +260,8 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 Индекс: `order_id`.
 
 ### settings
-`key` PK · `value` Text — тексты (`text.delivery`, `text.payment`,
-`text.contacts`, `text.privacy`), служебные флаги.
+`key` PK · `value` Text — тексты (`text.catalog_title`, `text.catalog_description`,
+`text.delivery`, `text.payment`, `text.contacts`, `text.privacy`), служебные флаги.
 
 ### logs
 Как в референсе: `id`, `source`, `level`, `event`, `method`, `path`,
@@ -286,7 +286,7 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 ### Каталог (покупатель)
 | Метод | Путь | Назначение |
 |---|---|---|
-| GET | `/catalog` | Разделы с товарами: `{sections:[{id,title,products:[{id,title,image_url,from_price,steps_count,is_early,early_until}]}]}` |
+| GET | `/catalog` | `{title, description, sections:[{id,title,products:[{id,title,image_url,from_price,steps_count,is_early,early_until}]}]}`; заголовок и описание редактируются в админке |
 | GET | `/products/{id}` | Товар + шаги + карточки: `{id,title,description,image_url,from_price,video:{url,file_url,poster_url},early_until,is_early,can_order,early_reason,steps:[...]}` |
 | GET | `/info` | `{delivery, payment, contacts, privacy}` |
 
@@ -351,8 +351,8 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 | POST | `/admin/orders/{id}/move` | `{direction: "up"\|"down"}` — меняет порядок с соседом; 409 на краю/не `new` |
 | POST | `/admin/orders/{id}/cancel-seen` | подтвердить, что отмена увидена (гасит плашку) |
 | GET | `/admin/orders/export.csv` | те же фильтры, CSV UTF-8 BOM, `;`, колонка «Очередь» |
-| GET/PUT | `/admin/texts` | тексты страницы «Информация» |
-| GET | `/admin/players` | игроки: имя, роль, донат-статус, `donor_exempt` |
+| GET/PUT | `/admin/texts` | тексты главной и страницы «Информация» |
+| GET | `/admin/players` | заказчики: имя, роль, донат-статус, `donor_exempt` |
 | POST | `/admin/players/{vk_id}/donor-exempt` | `{enabled}` — ручной флаг дона (фолбэк без бота) |
 | POST | `/admin/donors/sync` | принудительный синк кеша с донат-ботом; ответ `{synced}` |
 | GET | `/admin/logs?level=&limit=` | логи |
@@ -442,7 +442,7 @@ frontend/src/
 - **Админ**: в товаре — поле видео (ссылка/файл, постер, превью, удалить) и
   переключатель «До анонса» с обратным отсчётом и «Снять досрочно».
 - **Дон-статус** приходит в `/me` и обновляется при открытии приложения;
-  в админке — вкладка «Игроки» с ручной галочкой на случай недоступности бота.
+  в админке — вкладка «Заказчики» с ручной галочкой на случай недоступности бота.
 
 ### Состояния и ошибки
 Скелетоны при загрузке; пустые состояния («Скоро», «Ничего не выбрано»);
@@ -584,7 +584,7 @@ VK открывает мини-приложение в iframe: на дескто
   `early_until`/`is_early`/`can_order` в каталоге и товаре, гейт в
   `POST /orders` (403 `early_access`), бейдж и дата открытия, админский
   переключатель с обратным отсчётом.
-- **Игроки**: вкладка с донат-статусом, галочкой `donor_exempt` и кнопкой
+- **Заказчики**: вкладка с донат-статусом, галочкой `donor_exempt` и кнопкой
   «Синхронизировать» (на случай, если бот отвалился).
 - CSV: колонки `№;Очередь;Дата;Раздел;Товар;Состав;Кол-во позиций;Сумма;Статус;VK ID;Имя`.
 - Тесты: свои заказы (только свои), позиция в очереди (порядок, сдвиг после

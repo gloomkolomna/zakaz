@@ -10,7 +10,7 @@ export default function PlayersTab() {
   function load() {
     api.adminPlayers()
       .then(setPlayers)
-      .catch(() => setError('Не удалось загрузить игроков'));
+      .catch(() => setError('Не удалось загрузить заказчиков'));
   }
 
   useEffect(load, []);
@@ -61,7 +61,7 @@ export default function PlayersTab() {
             </label>
           </div>
         ))}
-        {players.length === 0 && <div className="empty">Покупателей пока нет.</div>}
+        {players.length === 0 && <div className="empty">Заказчиков пока нет.</div>}
       </div>
     </section>
   );

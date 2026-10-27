@@ -21,7 +21,7 @@
   .stage svg.grid { position: absolute; inset: 0; width: 100%; height: 100%; }
 
   .icon { width: 576px; height: 576px; display: grid; place-items: center; }
-  .icon .mark { color: var(--red); width: 380px; height: 380px; }
+  .icon .mark { color: var(--red); width: 520px; height: 520px; transform: translateY(38px); }
 
   .snippet { width: 1120px; height: 630px; padding: 72px; }
   .snippet .brand { display: flex; align-items: center; gap: 16px; font-family: 'Literata', Georgia, serif; font-size: 40px; font-weight: 600; letter-spacing: -0.01em; }
@@ -37,10 +37,9 @@
   <div id="root"></div>
   <script>
     const LOGO = `<svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M18.6 4.7 10.8 12.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-      <ellipse cx="18.1" cy="4.2" rx="0.85" ry="1.35" transform="rotate(-45 18.1 4.2)" fill="none" stroke="currentColor" stroke-width="1.05"/>
-      <path d="M17.6 4.9C16.2 2.4 13.2 2 11.7 3.6c-1.1 1.2-.8 3 .5 3.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-      <path d="M4.6 15.2 9.4 20M9.4 15.2 4.6 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M19 4.4 9.6 13.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="18.1" cy="5.3" r="0.55" fill="#f4f5f1"/>
+      <path d="M17.6 6.2C15.2 3.4 11.4 2.8 9 4.6 7 6.2 6.4 9 7.4 11" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
     </svg>`;
 
     const GRID = `<svg class="grid" aria-hidden="true">

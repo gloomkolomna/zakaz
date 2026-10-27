@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -313,12 +313,23 @@ def delete_section(section_id: int, db: Session = Depends(get_db), user: User = 
 @router.get("/products")
 def list_products(
     section_id: int | None = None,
+    q: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_role("admin")),
 ):
     query = db.query(Product)
     if section_id is not None:
         query = query.filter(Product.section_id == section_id)
+    value = (q or "").strip()
+    if value:
+        if value.isdigit():
+            query = query.filter(Product.id == int(value))
+        else:
+            term = f"%{value}%"
+            query = query.filter(or_(
+                Product.title.ilike(term),
+                Product.description.ilike(term),
+            ))
     rows = query.order_by(Product.section_id, Product.sort_order, Product.id).all()
     prices = from_price_map(db, [row.id for row in rows])
     return [

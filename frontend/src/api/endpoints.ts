@@ -283,8 +283,8 @@ export const api = {
   adminReorderSections: (ids: number[]) =>
     client.post('/admin/sections/reorder', { ids }).then((res) => res.data),
 
-  adminProducts: (sectionId?: number) =>
-    client.get<AdminProduct[]>('/admin/products', { params: sectionId ? { section_id: sectionId } : {} })
+  adminProducts: (sectionId?: number, q?: string) =>
+    client.get<AdminProduct[]>('/admin/products', { params: { ...(sectionId ? { section_id: sectionId } : {}), ...(q ? { q } : {}) } })
       .then((res) => res.data),
   adminProduct: (id: number) =>
     client.get<AdminProduct>(`/admin/products/${id}`).then((res) => res.data),

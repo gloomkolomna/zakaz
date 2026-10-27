@@ -294,3 +294,5 @@ Git: `https://github.com/gloomkolomna/zakaz`, ветка `main` (`GIT_REMOTE`).
   **VK ID**, client IP, UTC, message, JSON details и stack trace.
 - Заказчики: поиск по ФИО/VK ID, переход в карточку заказчика со списком его
   заказов; заказы фильтруются по `buyer_id` (VK ID), имя ищется через `q`.
+- Товары в админке: фильтр по разделу (включая «Все разделы») и поиск по
+  названию/ID через `GET /admin/products?section_id=&q=`, счётчик найденного.

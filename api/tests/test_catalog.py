@@ -319,6 +319,15 @@ def test_admin_products_crud_and_hidden_from_catalog(admin_client, db):
     assert listing[0]["is_active"] is False
     assert listing[0]["section_title"] == section.title
 
+    other_section = make_section(db, "Другой раздел")
+    make_product(db, other_section, "Другой товар")
+    by_section = admin_client.get(f"/api/admin/products?section_id={section.id}").json()
+    assert [row["id"] for row in by_section] == [product_id]
+    by_title = admin_client.get("/api/admin/products?q=Новый").json()
+    assert [row["id"] for row in by_title] == [product_id]
+    by_id = admin_client.get(f"/api/admin/products?q={product_id}").json()
+    assert [row["id"] for row in by_id] == [product_id]
+
 
 def test_admin_product_validation_and_404(admin_client, db):
     section = make_section(db)

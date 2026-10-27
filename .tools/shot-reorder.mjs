@@ -1,0 +1,18 @@
+import puppeteer from 'puppeteer-core';
+const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const ROOT = 'D:/Боты/СобериЗаказ/docs/design-preview';
+const URL = 'file:///D:/Боты/СобериЗаказ/docs/design-preview/index.html';
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--hide-scrollbars'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 1000, deviceScaleFactor: 2 });
+await page.goto(URL + '#admin', { waitUntil: 'load' });
+await page.evaluate(() => document.fonts.ready);
+await new Promise(r => setTimeout(r, 400));
+await page.click('[data-move="down"][data-id="14"]');
+await new Promise(r => setTimeout(r, 200));
+await page.screenshot({ path: ROOT + '/shots/a-admin-reorder-390.png' });
+await page.goto(URL + '#orders', { waitUntil: 'load' });
+const q14 = await page.$eval('a[href="#order/14"] .oc-queue', (e) => e.textContent.trim());
+const q12 = await page.$eval('a[href="#order/12"] .oc-queue', (e) => e.textContent.trim());
+console.log(JSON.stringify({ q14, q12 }));
+await browser.close();

@@ -1,0 +1,17 @@
+import puppeteer from 'puppeteer-core';
+const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const URL = 'file:///D:/Боты/СобериЗаказ/docs/design-preview/index.html';
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: true });
+const page = await browser.newPage();
+const errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+await page.setViewport({ width: 390, height: 1000 });
+const ids = async () => page.$$eval('.order:not(.is-cancelled):not(.is-done) .order-id', (els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
+await page.goto(URL + '#admin', { waitUntil: 'load' });
+const before = await ids();
+await page.click('[data-move="down"][data-id="14"]');
+const after = await ids();
+await page.click('[data-move="up"][data-id="14"]');
+const restored = await ids();
+console.log(JSON.stringify({ before, after, restored, errors }, null, 2));
+await browser.close();

@@ -1,0 +1,14 @@
+import puppeteer from 'puppeteer-core';
+const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const ROOT = 'D:/Боты/СобериЗаказ/docs/design-preview';
+const URL = 'file:///D:/Боты/СобериЗаказ/docs/design-preview/index.html#catalog';
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--hide-scrollbars'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 800, deviceScaleFactor: 4 });
+await page.goto(URL, { waitUntil: 'load' });
+await page.evaluate(() => document.fonts.ready);
+await new Promise(r => setTimeout(r, 600));
+await page.screenshot({ path: ROOT + '/shots/logo-header-zoom.png', clip: { x: 0, y: 0, width: 220, height: 58 } });
+await page.screenshot({ path: ROOT + '/shots/logo-header-390.png' });
+console.log('ok');
+await browser.close();

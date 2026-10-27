@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>СобериЗаказ — четыре направления</title>
+  <link rel="stylesheet" href="../../fonts/fonts-local.css">
+  <style>
+    :root {
+      --paper: #f4f5f1;
+      --sheet: #ffffff;
+      --ink: #1a201b;
+      --ink-2: #4c544e;
+      --muted: #68716a;
+      --line: #e1e3dc;
+      --red: #b02a21;
+      --font-ui: 'Golos Text', system-ui, sans-serif;
+      --font-title: 'Literata', Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 400 16px/1.55 var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 64px; }
+    h1 { font-family: var(--font-title); font-size: 38px; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
+    .lede { margin: 14px 0 0; max-width: 62ch; color: var(--ink-2); }
+    .hint { margin: 10px 0 0; max-width: 62ch; color: var(--muted); font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 40px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } h1 { font-size: 30px; } }
+    .card { display: flex; flex-direction: column; background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .shot { display: block; background: #e9ebe4; border-bottom: 1px solid var(--line); }
+    .shot img { display: block; width: 100%; height: 460px; object-fit: cover; object-position: top; }
+    .body { padding: 18px 20px 20px; display: flex; flex-direction: column; flex: 1; }
+    .kicker { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+    .kicker.chosen { color: var(--red); }
+    .name { font-family: var(--font-title); font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 4px 0 0; }
+    .desc { margin: 8px 0 0; color: var(--ink-2); font-size: 15px; }
+    .traits { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+    .traits b { color: var(--ink); font-weight: 500; }
+    .actions { margin-top: 18px; display: flex; gap: 10px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 44px; padding: 0 18px; border-radius: 6px; border: 1px solid var(--ink);
+      background: var(--ink); color: #fff; text-decoration: none; font-size: 14px; font-weight: 500;
+      transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+    .section-title { font-family: var(--font-title); font-size: 24px; font-weight: 600; margin: 56px 0 0; letter-spacing: -0.01em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+    th, td { text-align: left; vertical-align: top; padding: 12px 12px 12px 0; border-bottom: 1px solid var(--line); }
+    th { font-weight: 600; color: var(--ink); }
+    td:first-child { color: var(--muted); white-space: nowrap; padding-right: 24px; }
+    .foot { margin-top: 28px; font-size: 13px; color: var(--muted); max-width: 70ch; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Четыре направления</h1>
+    <p class="lede">Один и тот же продукт — каталог, шаги, легенда заказа, админка — в четырёх визуальных мирах. Все прототипы живые: карточки выбираются, степпер считает, заказ отправляется.</p>
+    <p class="hint">Сравнивать лучше попарно: откройте два варианта в соседних вкладках и пройдите один путь — каталог → товар → шаг → «Ваш заказ» → админка. Внутри каждого варианта в меню есть ссылка «Все варианты дизайна».</p>
+
+    <div class="grid">
+      <article class="card">
+        <a class="shot" href="../index.html#catalog"><img src="../shots/a-catalog-390.png" alt="Каталог варианта A"></a>
+        <div class="body">
+          <div class="kicker chosen">Вариант A · выбран</div>
+          <h2 class="name">Красная нить</h2>
+          <p class="desc">Бумага схемы, графит и одна красная нить: выбранное и пройденное отмечается ею. Заголовки — Literata, интерфейс — Golos.</p>
+          <ul class="traits">
+            <li><b>Фон</b> — тёплая бумага #F4F5F1</li>
+            <li><b>Форма</b> — 8 px, 1 px линии, без теней</li>
+            <li><b>Характер</b> — печатная схема, спокойная точность</li>
+          </ul>
+          <div class="actions">
+            <a class="btn" href="../index.html#catalog">Открыть A</a>
+            <a class="btn ghost" href="../index.html#step/0">Сразу к шагу</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <a class="shot" href="./b/index.html#catalog"><img src="../shots/b-catalog-390.png" alt="Каталог варианта B"></a>
+        <div class="body">
+          <div class="kicker">Вариант B</div>
+          <h2 class="name">Ночная смена</h2>
+          <p class="desc">Вечерняя мастерская при лампе: тёмный фон, тёплый светлый текст, широкие заголовки Unbounded. Фото — как светящиеся панно.</p>
+          <ul class="traits">
+            <li><b>Фон</b> — почти чёрный #0F1210</li>
+            <li><b>Форма</b> — 2 px, острые углы, инверсная кнопка</li>
+            <li><b>Характер</b> — тихий премиум, вечер, ремесло</li>
+          </ul>
+          <div class="actions">
+            <a class="btn" href="./b/index.html#catalog">Открыть B</a>
+            <a class="btn ghost" href="./b/index.html#step/0">Сразу к шагу</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <a class="shot" href="./c/index.html#catalog"><img src="../shots/c-catalog-390.png" alt="Каталог варианта C"></a>
+        <div class="body">
+          <div class="kicker">Вариант C</div>
+          <h2 class="name">Прайс-лист</h2>
+          <p class="desc">Каталог как типографский прайс: строки, правила, крупные имена и цены, маленькие квадратные превью. Один шрифт — Onest.</p>
+          <ul class="traits">
+            <li><b>Фон</b> — холодный светлый #F1F1ED</li>
+            <li><b>Форма</b> — 0 px, только линии и выключка</li>
+            <li><b>Характер</b> — швейцарская точность, цифры, плотность</li>
+          </ul>
+          <div class="actions">
+            <a class="btn" href="./c/index.html#catalog">Открыть C</a>
+            <a class="btn ghost" href="./c/index.html#step/0">Сразу к шагу</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="card">
+        <a class="shot" href="./d/index.html#catalog"><img src="../shots/d-catalog-390.png" alt="Каталог варианта D"></a>
+        <div class="body">
+          <div class="kicker">Вариант D</div>
+          <h2 class="name">Лоскут</h2>
+          <p class="desc">Тёплое лоскутное одеяло: мягкие формы, тканевые поля разделов, слэб-заголовки Bitter, шалфейный акцент.</p>
+          <ul class="traits">
+            <li><b>Фон</b> — тёплый песочный #F7F2E9</li>
+            <li><b>Форма</b> — 18–22 px, мягкие карточки</li>
+            <li><b>Характер</b> — уют, тактильность, женственность</li>
+          </ul>
+          <div class="actions">
+            <a class="btn" href="./d/index.html#catalog">Открыть D</a>
+            <a class="btn ghost" href="./d/index.html#step/0">Сразу к шагу</a>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <h2 class="section-title">Чем они отличаются</h2>
+    <table>
+      <tr><th></th><th>A · Красная нить</th><th>B · Ночная смена</th><th>C · Прайс-лист</th><th>D · Лоскут</th></tr>
+      <tr><td>Фон</td><td>тёплая бумага</td><td>почти чёрный</td><td>холодный светлый</td><td>тёплый песочный</td></tr>
+      <tr><td>Заголовки</td><td>Literata, антиква</td><td>Unbounded, широкая</td><td>Onest, гротеск</td><td>Bitter, слэб</td></tr>
+      <tr><td>Интерфейс</td><td>Golos Text</td><td>Golos Text</td><td>Onest</td><td>Onest</td></tr>
+      <tr><td>Форма</td><td>8 px, линии</td><td>2 px, острые</td><td>0 px, правила</td><td>18 px, мягкие</td></tr>
+      <tr><td>Акцент</td><td>красный</td><td>тёплый светлый</td><td>нет, только графит</td><td>шалфей</td></tr>
+      <tr><td>Каталог</td><td>крупные карточки</td><td>крупные карточки</td><td>строки-прайс</td><td>карточки в полях</td></tr>
+      <tr><td>Когда выбирать</td><td>образ «набор-схема», акцент на прогрессе</td><td>вечернее, премиальное настроение</td><td>много товаров, быстрый выбор по цене</td><td>тёплый женственный бренд</td></tr>
+    </table>
+
+    <p class="foot">Фото во всех вариантах — рисованные схемы-трекеры, плейсхолдер до реальных фотографий. Тексты, цены и состав шагов одинаковы во всех четырёх, чтобы сравнивать именно дизайн. Скриншоты — 390 px; на десктопе колонка 720 px.</p>
+  </div>
+</body>
+</html>

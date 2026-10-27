@@ -1,0 +1,15 @@
+import puppeteer from 'puppeteer-core';
+const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const ROOT = 'D:/Боты/СобериЗаказ/docs/design-preview';
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--hide-scrollbars'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+await page.goto(ROOT + '/index.html#order/14', { waitUntil: 'load' });
+await page.evaluate(() => document.fonts.ready);
+await new Promise(r => setTimeout(r, 500));
+await page.click('[data-cancel]');
+await new Promise(r => setTimeout(r, 400));
+await page.screenshot({ path: ROOT + '/shots/a-confirm-390.png' });
+const title = await page.$eval('.modal-card h2', el => el.textContent.trim());
+console.log('modal:', title);
+await browser.close();

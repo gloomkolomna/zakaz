@@ -1,0 +1,14 @@
+import puppeteer from 'puppeteer-core';
+const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const ROOT = 'D:/Боты/СобериЗаказ/docs/design-preview';
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--hide-scrollbars'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+await page.goto(ROOT + '/index.html#review', { waitUntil: 'load' });
+await page.evaluate(() => document.fonts.ready);
+await new Promise(r => setTimeout(r, 500));
+await page.click('[data-reselect="2"]');
+await new Promise(r => setTimeout(r, 300));
+await page.screenshot({ path: ROOT + '/shots/a-reselect-390.png' });
+console.log('ok');
+await browser.close();

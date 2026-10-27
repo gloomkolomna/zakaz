@@ -1,0 +1,29 @@
+# Python
+api/venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+api/*.db
+api/*.db-wal
+api/*.db-shm
+api/uploads/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Env
+.env
+.env.local
+*.env.local
+
+# Tools
+.tools/node_modules/
+.taste-skill/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

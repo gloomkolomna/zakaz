@@ -10,7 +10,14 @@ from starlette.responses import Response
 from services.auth import decode_access_token
 from services.logging_svc import record_log
 
-MAX_BODY_LOG = 1000
+MAX_BODY_LOG = 4000
+
+
+def _request_details(request: Request, path: str) -> dict:
+    if path.startswith("/api/auth"):
+        return {}
+    query = request.url.query
+    return {"query": query} if query else {}
 
 
 def _extract_user_id(request: Request) -> int | None:
@@ -117,11 +124,15 @@ async def log_failed_requests(request: Request, call_next):
         response = await call_next(request)
     except Exception:
         if should_log:
+            details: dict = {"traceback": traceback.format_exc()}
+            request_details = _request_details(request, path)
+            if request_details:
+                details["request"] = request_details
             await run_in_threadpool(
                 record_log,
                 source="server", level="error", event="exception",
                 method=request.method, path=path, message="Unhandled exception",
-                details={"traceback": traceback.format_exc()},
+                details=details,
                 user_id=log_user_id, client_ip=client_ip, session_factory=session_factory,
             )
         raise
@@ -145,6 +156,9 @@ async def log_failed_requests(request: Request, call_next):
                 headers=copied,
                 media_type=response.media_type,
             )
+            request_details = _request_details(request, path)
+            if request_details:
+                details["request"] = request_details
             level = "error" if status_code >= 500 else "warn"
             await run_in_threadpool(
                 record_log,

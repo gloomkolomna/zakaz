@@ -216,6 +216,7 @@ export interface AdminLog {
   message: string | null;
   details: string | null;
   user_id: number | null;
+  client_ip: string | null;
   created_at: string | null;
 }
 

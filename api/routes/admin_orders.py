@@ -320,7 +320,7 @@ def put_admin_texts(data: TextIn, db: Session = Depends(get_db), user: User = De
 
 @router.get("/logs")
 def get_logs(
-    level: str | None = None,
+    level: str | None = "error",
     limit: int = 100,
     db: Session = Depends(get_db),
     user: User = Depends(require_role("admin")),
@@ -342,6 +342,7 @@ def get_logs(
             "message": row.message,
             "details": row.details,
             "user_id": row.user_id,
+            "client_ip": row.client_ip,
             "created_at": row.created_at.isoformat() if row.created_at else None,
         }
         for row in rows

@@ -5,22 +5,28 @@ import { formatPrice } from '../api/money';
 import { mediaUrl } from '../api/media';
 import EarlyBadge from '../components/EarlyBadge';
 import Skeleton from '../components/Skeleton';
+import { usePolling } from '../hooks/usePolling';
 
 export default function Catalog() {
   const [data, setData] = useState<Catalog | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  function load() {
-    setLoading(true);
+  function load(silent = false) {
+    if (!silent) setLoading(true);
     setError(false);
     api.catalog()
       .then(setData)
-      .catch(() => setError(true))
+      .catch(() => {
+        if (!silent) setError(true);
+      })
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    void load();
+  }, []);
+  usePolling(() => load(true), 30_000);
 
   if (loading) return <Skeleton lines={4} />;
 
@@ -30,7 +36,7 @@ export default function Catalog() {
         <h1>Наборы для вышивки</h1>
         <p className="lede">Не удалось загрузить каталог. Проверьте связь.</p>
         <div className="page-actions">
-          <button className="btn" type="button" onClick={load}>
+          <button className="btn" type="button" onClick={() => load()}>
             Повторить
           </button>
         </div>

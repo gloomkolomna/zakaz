@@ -6,19 +6,25 @@ import { QueueLine } from '../components/StatusChip';
 import StatusChip from '../components/StatusChip';
 import Skeleton from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { usePolling } from '../hooks/usePolling';
 
 export default function MyOrders() {
   const [orders, setOrders] = useState<OrderBrief[] | null>(null);
   const [error, setError] = useState(false);
 
-  function load() {
+  function load(silent = false) {
     setError(false);
-    api.myOrders()
+    return api.myOrders()
       .then((data) => setOrders(data.items))
-      .catch(() => setError(true));
+      .catch(() => {
+        if (!silent) setError(true);
+      });
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    void load();
+  }, []);
+  usePolling(() => load(true), 30_000);
 
   if (error) {
     return (
@@ -26,7 +32,7 @@ export default function MyOrders() {
         <h1>Мои заказы</h1>
         <div className="empty">
           Не удалось загрузить заказы.
-          <button className="text-link" type="button" onClick={load}>
+          <button className="text-link" type="button" onClick={() => load()}>
             Повторить
           </button>
         </div>

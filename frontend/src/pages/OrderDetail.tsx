@@ -7,6 +7,7 @@ import BackLink from '../components/BackLink';
 import ConfirmDialog from '../components/ConfirmDialog';
 import StatusChip from '../components/StatusChip';
 import Skeleton from '../components/Skeleton';
+import { usePolling } from '../hooks/usePolling';
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -17,15 +18,22 @@ export default function OrderDetail() {
   const [confirm, setConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
-    api.order(orderId)
+  function load(silent = false) {
+    if (!silent) setLoading(true);
+    return api.order(orderId)
       .then(setOrder)
       .catch((e) => {
+        if (silent) return;
         const detail = e?.response?.data?.detail;
         setError(typeof detail === 'string' ? detail : 'Заказ не найден');
       })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    void load();
   }, [orderId]);
+  usePolling(() => load(true), 15_000);
 
   function cancel() {
     setCancelling(true);

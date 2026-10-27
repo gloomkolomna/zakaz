@@ -1560,6 +1560,22 @@ a.brand:active {
   font-weight: 500;
 }
 
+.admin-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--red);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
 .admin-form {
   display: grid;
   gap: 12px;

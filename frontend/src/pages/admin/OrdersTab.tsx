@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   api,
@@ -13,6 +13,7 @@ import {
 import { formatDate, formatPrice } from '../../api/money';
 import StatusChip from '../../components/StatusChip';
 import Skeleton from '../../components/Skeleton';
+import { usePolling } from '../../hooks/usePolling';
 
 const LIMIT = 20;
 
@@ -31,6 +32,8 @@ export default function OrdersTab() {
   const [productId, setProductId] = useState<number | ''>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const requestId = useRef(0);
 
   useEffect(() => {
     Promise.all([api.adminSections(), api.adminProducts()])
@@ -41,23 +44,31 @@ export default function OrdersTab() {
       .catch(() => setError('Не удалось загрузить фильтры'));
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    api.adminOrders(filters)
+  function fetchOrders(silent = false) {
+    const id = ++requestId.current;
+    if (!silent) setLoading(true);
+    setError(null);
+    return api.adminOrders(filters)
       .then((rows) => {
-        if (!cancelled) setData(rows);
+        if (id !== requestId.current) return;
+        setData(rows);
+        setLastUpdated(new Date());
       })
       .catch(() => {
-        if (!cancelled) setError('Не удалось загрузить заказы');
+        if (!silent && id === requestId.current) setError('Не удалось загрузить заказы');
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!silent && id === requestId.current) setLoading(false);
       });
+  }
+
+  useEffect(() => {
+    void fetchOrders();
     return () => {
-      cancelled = true;
+      requestId.current += 1;
     };
   }, [filters]);
+  usePolling(() => fetchOrders(true), 10_000);
 
   const visibleProducts = useMemo(
     () => (sectionId === '' ? products : products.filter((product) => product.section_id === sectionId)),
@@ -201,6 +212,11 @@ export default function OrdersTab() {
         <button className="btn secondary" type="button" onClick={() => applyFilters()}>Применить</button>
         <button className="btn secondary" type="button" onClick={() => downloadOrdersCsv(filters)}>CSV</button>
         <button className="btn secondary" type="button" onClick={() => downloadOrdersPdf(filters)}>PDF</button>
+      </div>
+
+      <div className="admin-muted" aria-live="polite">
+        Автообновление: 10 с
+        {lastUpdated ? ` · обновлено в ${lastUpdated.toLocaleTimeString('ru-RU')}` : ''}
       </div>
 
       {error && <div className="error-text">{error}</div>}

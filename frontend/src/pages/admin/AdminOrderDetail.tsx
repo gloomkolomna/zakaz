@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, type OrderDetail } from '../../api/endpoints';
+import { usePolling } from '../../hooks/usePolling';
 import { formatDate, formatPrice } from '../../api/money';
 import { mediaUrl } from '../../api/media';
 import BackLink from '../../components/BackLink';
@@ -14,14 +15,20 @@ export default function AdminOrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function load() {
-    api.adminOrder(orderId)
+  function load(silent = false) {
+    if (!silent) setLoading(true);
+    return api.adminOrder(orderId)
       .then(setOrder)
-      .catch((e) => setError(e?.response?.data?.detail || 'Заказ не найден'))
+      .catch((e) => {
+        if (!silent) setError(e?.response?.data?.detail || 'Заказ не найден');
+      })
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [orderId]);
+  useEffect(() => {
+    void load();
+  }, [orderId]);
+  usePolling(() => load(true), 15_000);
 
   function complete() {
     api.adminCompleteOrder(orderId).then(setOrder).catch(() => setError('Не удалось выполнить заказ'));

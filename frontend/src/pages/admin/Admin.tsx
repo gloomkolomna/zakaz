@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { api } from '../../api/endpoints';
+import { usePolling } from '../../hooks/usePolling';
 
 const TABS = [
   { to: 'sections', label: 'Разделы' },
@@ -10,6 +13,19 @@ const TABS = [
 ];
 
 export default function Admin() {
+  const [unread, setUnread] = useState(0);
+
+  function refreshBadge() {
+    return api.adminOrders({ limit: 1 })
+      .then((data) => setUnread(data.summary.unread))
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    void refreshBadge();
+  }, []);
+  usePolling(refreshBadge, 15_000);
+
   return (
     <main className="page page-admin">
       <h1>Управление</h1>
@@ -21,6 +37,7 @@ export default function Admin() {
             className={({ isActive }) => `admin-tab${isActive ? ' is-active' : ''}`}
           >
             {tab.label}
+            {tab.to === 'orders' && unread > 0 && <span className="admin-tab-badge">{unread}</span>}
           </NavLink>
         ))}
       </nav>

@@ -78,6 +78,30 @@ def _base_query(
     return query
 
 
+def _export_rows(
+    db: Session,
+    section_id: int | None,
+    product_id: int | None,
+    date_from: datetime.date | None,
+    date_to: datetime.date | None,
+    q: str | None,
+    unread: int,
+    order_status: str | None,
+    queue_only: int,
+    cancel_unread: int,
+):
+    base = _base_query(
+        db, section_id, product_id, date_from, date_to, q,
+        unread, order_status, queue_only, cancel_unread,
+    )
+    rows = (
+        base.options(selectinload(Order.items))
+        .order_by(func.coalesce(Order.queue_order, 1_000_000_000), Order.created_at, Order.id)
+        .all()
+    )
+    return rows, queue_map(db)
+
+
 @router.get("/orders")
 def list_orders(
     section_id: int | None = None,
@@ -144,13 +168,10 @@ def export_orders(
 ):
     start = _date(date_from, "Дата с")
     end = _date(date_to, "Дата по")
-    base = _base_query(db, section_id, product_id, start, end, q, unread, status_filter, queue, cancel_unread)
-    rows = (
-        base.options(selectinload(Order.items))
-        .order_by(func.coalesce(Order.queue_order, 1_000_000_000), Order.created_at, Order.id)
-        .all()
+    rows, positions = _export_rows(
+        db, section_id, product_id, start, end, q,
+        unread, status_filter, queue, cancel_unread,
     )
-    positions = queue_map(db)
 
     out = io.StringIO()
     writer = csv.writer(out, delimiter=";", lineterminator="\r\n")
@@ -180,6 +201,35 @@ def export_orders(
         content=body,
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="zakaz-orders.csv"'},
+    )
+
+
+@router.get("/orders/export.pdf")
+def export_orders_pdf(
+    section_id: int | None = None,
+    product_id: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    q: str | None = None,
+    unread: int = 0,
+    status_filter: str | None = Query(default=None, alias="status"),
+    queue: int = 0,
+    cancel_unread: int = 0,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    from services.orders_pdf import render_orders_pdf
+
+    start = _date(date_from, "Дата с")
+    end = _date(date_to, "Дата по")
+    rows, positions = _export_rows(
+        db, section_id, product_id, start, end, q,
+        unread, status_filter, queue, cancel_unread,
+    )
+    return Response(
+        content=render_orders_pdf(rows, positions),
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="zakaz-orders.pdf"'},
     )
 
 

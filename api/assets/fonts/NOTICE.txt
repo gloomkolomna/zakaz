@@ -1,0 +1,5 @@
+DejaVu Sans (regular, bold) — для PDF-экспорта заказов.
+
+Источник: https://dejavu-fonts.github.io/
+Лицензия: Bitstream Vera Fonts License (DejaVu changes — public domain).
+Текст лицензии: https://dejavu-fonts.github.io/License.html

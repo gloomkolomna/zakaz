@@ -167,6 +167,26 @@ def test_export_csv(admin_client, db):
     assert len(filtered.content.decode("utf-8-sig").splitlines()) == 3
 
 
+def test_export_pdf(admin_client, db):
+    section, product, card, first_id, second_id, third_id = _make_orders(db)
+    with make_user_client(124) as second:
+        second.post(f"/api/orders/{second_id}/cancel")
+
+    resp = admin_client.get("/api/admin/orders/export.pdf")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("application/pdf")
+    assert "zakaz-orders.pdf" in resp.headers["content-disposition"]
+    assert resp.content.startswith(b"%PDF")
+    assert len(resp.content) > 1000
+
+    filtered = admin_client.get("/api/admin/orders/export.pdf?status=cancelled")
+    assert filtered.status_code == 200
+    assert filtered.content.startswith(b"%PDF")
+
+    with make_user_client(999) as player:
+        assert player.get("/api/admin/orders/export.pdf").status_code == 403
+
+
 def test_texts_read_and_write(admin_client, db):
     resp = admin_client.put(
         "/api/admin/texts",

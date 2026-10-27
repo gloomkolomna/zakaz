@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   api,
   downloadOrdersCsv,
+  downloadOrdersPdf,
   type AdminOrdersResponse,
   type AdminProduct,
   type AdminSection,
@@ -199,6 +200,7 @@ export default function OrdersTab() {
         </div>
         <button className="btn secondary" type="button" onClick={() => applyFilters()}>Применить</button>
         <button className="btn secondary" type="button" onClick={() => downloadOrdersCsv(filters)}>CSV</button>
+        <button className="btn secondary" type="button" onClick={() => downloadOrdersPdf(filters)}>PDF</button>
       </div>
 
       {error && <div className="error-text">{error}</div>}

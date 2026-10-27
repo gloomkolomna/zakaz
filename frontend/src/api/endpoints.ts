@@ -341,19 +341,27 @@ export const api = {
     client.post<{ synced: number }>('/admin/donors/sync').then((res) => res.data),
 };
 
-export async function downloadOrdersCsv(filters: OrderFilters): Promise<void> {
-  const res = await client.get<Blob>('/admin/orders/export.csv', {
+async function downloadOrdersFile(path: string, filename: string, filters: OrderFilters): Promise<void> {
+  const res = await client.get<Blob>(path, {
     params: paramsOf(filters),
     responseType: 'blob',
   });
   const url = URL.createObjectURL(res.data);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'zakaz-orders.csv';
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+export async function downloadOrdersCsv(filters: OrderFilters): Promise<void> {
+  return downloadOrdersFile('/admin/orders/export.csv', 'zakaz-orders.csv', filters);
+}
+
+export async function downloadOrdersPdf(filters: OrderFilters): Promise<void> {
+  return downloadOrdersFile('/admin/orders/export.pdf', 'zakaz-orders.pdf', filters);
 }
 
 export type { Selected };

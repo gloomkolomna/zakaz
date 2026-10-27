@@ -5,11 +5,7 @@ const CROSS = (size = 12, color = 'currentColor', w = 2) =>
 
 const CHEVRON = `<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-const LOGO = (size = 22) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true">
-  <path d="M19 4.4 9.6 13.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="18.1" cy="5.3" r="0.55" fill="#f4f5f1"/>
-  <path d="M17.6 6.2C15.2 3.4 11.4 2.8 9 4.6 7 6.2 6.4 9 7.4 11" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-</svg>`;
+const LOGO = (size = 38) => `<img class="brand-logo" src="./logo.png" width="${size}" height="${size}" alt="" aria-hidden="true">`;
 const CHECK = `<svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true" class="check-mark"><path d="M12 30l12 12 20-26" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
 
 const CHEV_UP = `<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -383,7 +379,7 @@ function topbar(opts) {
   const o = opts || {};
   const left = o.back
     ? `<button class="back-btn" data-act="back" aria-label="Назад">${CHEVRON}</button>`
-    : `<div class="brand">${LOGO(22)}<span>СобериЗаказ</span></div>`;
+    : `<div class="brand">${LOGO(38)}<span>Магазин игр</span></div>`;
   return `<header class="topbar">
     ${left}
     ${o.back && o.title ? `<div class="top-title">${o.title}</div>` : ''}
@@ -716,7 +712,7 @@ function renderConfirm() {
 function renderMenu() {
   return `<div class="sheet" data-open="${state.menu}">
     <div class="sheet-head">
-      <div class="brand">${LOGO(22)}<span>СобериЗаказ</span></div>
+      <div class="brand">${LOGO(38)}<span>Магазин игр</span></div>
       <button class="icon-btn" data-act="menu" aria-label="Закрыть меню">
         <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>

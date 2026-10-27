@@ -81,7 +81,7 @@ a { color: inherit; }
   letter-spacing: -0.01em;
 }
 
-.brand svg { color: var(--red); flex: none; }
+.brand-logo { flex: none; border-radius: 5px; object-fit: cover; }
 
 .top-title {
   font-size: 13px;

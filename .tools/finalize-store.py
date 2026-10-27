@@ -1,26 +1,33 @@
 from pathlib import Path
+import os
 
 from PIL import Image
 
-ROOT = Path("D:/Боты/СобериЗаказ/docs/store")
+ROOT = Path(__file__).resolve().parents[1] / "docs" / "store"
 RAW = ROOT / "raw"
+
+
+def _replace_save(im: Image.Image, path: Path, **kwargs) -> None:
+    tmp = path.with_name(f"{path.stem}.tmp{path.suffix}")
+    im.save(tmp, **kwargs)
+    os.replace(tmp, path)
 
 
 def downscale(src: str, dst: str, size: tuple[int, int]) -> None:
     im = Image.open(RAW / src).convert("RGB")
-    im.resize(size, Image.LANCZOS).save(ROOT / dst, optimize=True)
+    _replace_save(im.resize(size, Image.LANCZOS), ROOT / dst, optimize=True)
 
 
-def to_jpg(src: str, dst: str, size: tuple[int, int]) -> None:
+def to_jpg(src: str, dst: str) -> None:
     im = Image.open(ROOT / src).convert("RGB")
-    im.save(ROOT / dst, quality=92, optimize=True, progressive=True)
+    _replace_save(im, ROOT / dst, quality=92, optimize=True, progressive=True)
 
 
 downscale("icon-576@2x.png", "icon-576.png", (576, 576))
-to_jpg("icon-576.png", "icon-576.jpg", (576, 576))
+to_jpg("icon-576.png", "icon-576.jpg")
 
 downscale("snippet-1120x630@2x.png", "snippet-1120x630.png", (1120, 630))
-to_jpg("snippet-1120x630.png", "snippet-1120x630.jpg", (1120, 630))
+to_jpg("snippet-1120x630.png", "snippet-1120x630.jpg")
 
 shots = [
     ("screen-1-catalog@2x.png", "screen-1-catalog-600x1200.png"),

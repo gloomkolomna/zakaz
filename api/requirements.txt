@@ -1,0 +1,10 @@
+fastapi==0.115.14
+uvicorn[standard]==0.32.1
+gunicorn==23.0.0
+python-jose[cryptography]==3.5.0
+python-dotenv==1.2.4
+sqlalchemy==2.1.5
+alembic==1.20.0
+httpx==0.28.1
+pydantic==2.14.1
+pytest==8.4.2

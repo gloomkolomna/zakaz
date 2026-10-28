@@ -9,13 +9,15 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 from deps import require_role
-from models import Order, OrderItem, Product, ProductStep, Section, StepCard, User, utcnow
+from models import Order, OrderItem, Product, ProductStep, Section, StepCard, StepCardImage, User, utcnow
 from services.catalog import filled_steps, from_price_map
 from services.early import is_early
 from services.stock import is_sold_out, ordered_map
 from services.uploads import remove_upload, save_image, save_video
 
 router = APIRouter(prefix="/api/admin", tags=["admin-catalog"])
+
+MAX_CARD_IMAGES = 10
 
 
 def _title(value: str) -> str:
@@ -94,6 +96,29 @@ def _video(product: Product) -> dict | None:
         "url": product.video_url,
         "file_url": product.video_file_url,
         "poster_url": product.video_poster_url,
+    }
+
+
+def _card_images(card: StepCard) -> list[dict]:
+    return [
+        {"id": image.id, "url": image.image_url, "sort_order": image.sort_order}
+        for image in sorted(card.images, key=lambda row: (row.sort_order, row.id))
+    ]
+
+
+def _card_out(card: StepCard) -> dict:
+    images = _card_images(card)
+    return {
+        "id": card.id,
+        "step_id": card.step_id,
+        "title": card.title,
+        "description": card.description,
+        "image_url": images[0]["url"] if images else None,
+        "images": images,
+        "price": card.price,
+        "max_qty": card.max_qty,
+        "sort_order": card.sort_order,
+        "is_active": bool(card.is_active),
     }
 
 
@@ -195,6 +220,10 @@ class CardCreateIn(BaseModel):
     sort_order: int | None = None
 
 
+class CardImagesReorderIn(BaseModel):
+    ids: list[int]
+
+
 class StepReorderIn(BaseModel):
     product_id: int
     ids: list[int]
@@ -238,7 +267,8 @@ def _remove_product_files(product: Product) -> None:
     remove_upload(product.video_poster_url)
     for step in product.steps:
         for card in step.cards:
-            remove_upload(card.image_url)
+            for image in card.images:
+                remove_upload(image.image_url)
 
 
 def _detach_orders(db, product: Product) -> None:
@@ -637,20 +667,7 @@ def list_cards(step_id: int, db: Session = Depends(get_db), user: User = Depends
         .order_by(StepCard.sort_order, StepCard.id)
         .all()
     )
-    return [
-        {
-            "id": row.id,
-            "step_id": row.step_id,
-            "title": row.title,
-            "description": row.description,
-            "image_url": row.image_url,
-            "price": row.price,
-            "max_qty": row.max_qty,
-            "sort_order": row.sort_order,
-            "is_active": bool(row.is_active),
-        }
-        for row in rows
-    ]
+    return [_card_out(row) for row in rows]
 
 
 @router.post("/steps/{step_id}/cards", status_code=status.HTTP_201_CREATED)
@@ -710,7 +727,7 @@ def delete_card(card_id: int, db: Session = Depends(get_db), user: User = Depend
     return {"ok": True}
 
 
-@router.post("/cards/{card_id}/image")
+@router.post("/cards/{card_id}/images")
 def upload_card_image(
     card_id: int,
     file: UploadFile = File(...),
@@ -718,18 +735,71 @@ def upload_card_image(
     user: User = Depends(require_role("admin")),
 ):
     row = _card(db, card_id)
+    if len(row.images) >= MAX_CARD_IMAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"У карточки может быть не больше {MAX_CARD_IMAGES} фото",
+        )
     url = save_image(file, "card", 1400)
-    remove_upload(row.image_url)
-    row.image_url = url
+    next_order = max((image.sort_order for image in row.images), default=-1) + 1
+    image = StepCardImage(card_id=row.id, image_url=url, sort_order=next_order)
+    db.add(image)
     db.commit()
-    return {"url": url}
+    db.refresh(image)
+    return {"id": image.id, "url": image.image_url, "sort_order": image.sort_order}
 
 
-@router.delete("/cards/{card_id}/image")
-def delete_card_image(card_id: int, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
+@router.delete("/cards/{card_id}/images/{image_id}")
+def delete_card_image(
+    card_id: int,
+    image_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
     row = _card(db, card_id)
-    remove_upload(row.image_url)
-    row.image_url = None
+    image = (
+        db.query(StepCardImage)
+        .filter(StepCardImage.id == image_id, StepCardImage.card_id == row.id)
+        .first()
+    )
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Фото не найдено")
+    remove_upload(image.image_url)
+    db.delete(image)
+    db.commit()
+    remaining = (
+        db.query(StepCardImage)
+        .filter(StepCardImage.card_id == row.id)
+        .order_by(StepCardImage.sort_order, StepCardImage.id)
+        .all()
+    )
+    for index, item in enumerate(remaining):
+        item.sort_order = index
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/cards/{card_id}/images/reorder")
+def reorder_card_images(
+    card_id: int,
+    data: CardImagesReorderIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    row = _card(db, card_id)
+    if not data.ids or len(set(data.ids)) != len(data.ids):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Некорректный список фото")
+    images = (
+        db.query(StepCardImage)
+        .filter(StepCardImage.card_id == row.id, StepCardImage.id.in_(data.ids))
+        .all()
+    )
+    total = db.query(StepCardImage).filter(StepCardImage.card_id == row.id).count()
+    if len(images) != len(data.ids) or total != len(data.ids):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Нужно передать все фото карточки")
+    by_id = {image.id: image for image in images}
+    for index, image_id in enumerate(data.ids):
+        by_id[image_id].sort_order = index
     db.commit()
     return {"ok": True}
 

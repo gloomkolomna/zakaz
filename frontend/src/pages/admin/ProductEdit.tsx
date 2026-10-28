@@ -22,6 +22,8 @@ interface ProductForm {
   is_active: boolean;
 }
 
+const MAX_CARD_IMAGES = 10;
+
 export default function ProductEdit() {
   const { id } = useParams();
   const productId = Number(id);
@@ -544,9 +546,46 @@ function CardRow({
       .catch((e) => onError(e?.response?.data?.detail || 'Не удалось сохранить карточку'));
   }
 
-  function upload(file: File | undefined) {
-    if (!file) return;
-    api.adminUploadCardImage(card.id, file).then(onChanged).catch(() => onError('Не удалось загрузить фото'));
+  async function uploadImages(files: File[]) {
+    if (files.length === 0) return;
+    const remaining = MAX_CARD_IMAGES - card.images.length;
+    if (files.length > remaining) {
+      onError(`Можно добавить ещё ${remaining} фото`);
+      return;
+    }
+    for (const file of files) {
+      try {
+        await api.adminAddCardImage(card.id, file);
+      } catch (error) {
+        const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+        onError(detail || 'Не удалось загрузить фото');
+        break;
+      }
+    }
+    onChanged();
+  }
+
+  async function removeImage(image: AdminCard['images'][number]) {
+    const ok = await confirm({
+      title: 'Удалить фото?',
+      text: `Фото будет удалено из карточки «${card.title}».`,
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
+    api.adminDeleteCardImage(card.id, image.id)
+      .then(onChanged)
+      .catch((e) => onError(e?.response?.data?.detail || 'Не удалось удалить фото'));
+  }
+
+  function moveImage(imageIndex: number, direction: -1 | 1) {
+    const target = imageIndex + direction;
+    if (target < 0 || target >= card.images.length) return;
+    const ids = card.images.map((image) => image.id);
+    [ids[imageIndex], ids[target]] = [ids[target], ids[imageIndex]];
+    api.adminReorderCardImages(card.id, ids)
+      .then(onChanged)
+      .catch((e) => onError(e?.response?.data?.detail || 'Не удалось изменить порядок фото'));
   }
 
   return (
@@ -560,15 +599,47 @@ function CardRow({
         <div className="admin-actions">
           <button className="icon-action" type="button" onClick={() => onMove(index, -1)} disabled={index === 0} aria-label="Карточка выше">↑</button>
           <button className="icon-action" type="button" onClick={() => onMove(index, 1)} disabled={index === total - 1} aria-label="Карточка ниже">↓</button>
-          <label className="icon-action">
-            Фото
-            <input type="file" accept="image/*" hidden onChange={(event) => upload(event.target.files?.[0])} />
-          </label>
           <button className="icon-action red" type="button" onClick={removeCard}>
             Удалить
           </button>
         </div>
       </div>
+
+      <div className="admin-card-gallery">
+        {card.images.map((image, imageIndex) => (
+          <div className="admin-card-image" key={image.id}>
+            <div className="admin-card-image-media">
+              <img src={mediaUrl(image.url)} alt="" />
+              {imageIndex === 0 && <span className="admin-card-cover">Обложка</span>}
+            </div>
+            <div className="admin-actions">
+              <button className="icon-action" type="button" onClick={() => moveImage(imageIndex, -1)} disabled={imageIndex === 0} aria-label="Фото выше">↑</button>
+              <button className="icon-action" type="button" onClick={() => moveImage(imageIndex, 1)} disabled={imageIndex === card.images.length - 1} aria-label="Фото ниже">↓</button>
+              <button className="icon-action red" type="button" onClick={() => removeImage(image)} aria-label="Удалить фото">×</button>
+            </div>
+          </div>
+        ))}
+        {card.images.length < MAX_CARD_IMAGES && (
+          <label className="admin-card-add">
+            <span>+ Фото</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(event) => {
+                const files = Array.from(event.target.files || []);
+                event.target.value = '';
+                void uploadImages(files);
+              }}
+            />
+          </label>
+        )}
+      </div>
+      <div className="admin-muted">
+        {card.images.length} из {MAX_CARD_IMAGES} · первое фото — обложка
+      </div>
+
       <details>
         <summary className="admin-muted">Редактировать карточку</summary>
         <div className="admin-inline-form">
@@ -593,9 +664,6 @@ function CardRow({
             Активна
           </label>
           <button className="btn secondary" type="button" onClick={save}>Сохранить</button>
-          {card.image_url && (
-            <button className="icon-action red" type="button" onClick={() => api.adminDeleteCardImage(card.id).then(onChanged)}>Сбросить фото</button>
-          )}
         </div>
       </details>
     </div>

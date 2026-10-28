@@ -48,11 +48,18 @@ export interface Catalog {
   sections: CatalogSection[];
 }
 
+export interface CardImage {
+  id: number;
+  url: string;
+  sort_order: number;
+}
+
 export interface Card {
   id: number;
   title: string;
   description: string | null;
   image_url: string | null;
+  images: CardImage[];
   price: number;
   max_qty: number;
 }
@@ -155,6 +162,7 @@ export interface AdminCard {
   title: string;
   description: string | null;
   image_url: string | null;
+  images: CardImage[];
   price: number;
   max_qty: number;
   sort_order: number;
@@ -361,9 +369,11 @@ export const api = {
   adminUpdateCard: (id: number, data: Partial<AdminCard>) =>
     client.put(`/admin/cards/${id}`, data).then((res) => res.data),
   adminDeleteCard: (id: number) => client.delete(`/admin/cards/${id}`).then((res) => res.data),
-  adminUploadCardImage: (id: number, file: File) => upload(`/admin/cards/${id}/image`, file),
-  adminDeleteCardImage: (id: number) =>
-    client.delete(`/admin/cards/${id}/image`).then((res) => res.data),
+  adminAddCardImage: (id: number, file: File) => upload(`/admin/cards/${id}/images`, file),
+  adminDeleteCardImage: (cardId: number, imageId: number) =>
+    client.delete(`/admin/cards/${cardId}/images/${imageId}`).then((res) => res.data),
+  adminReorderCardImages: (cardId: number, ids: number[]) =>
+    client.post(`/admin/cards/${cardId}/images/reorder`, { ids }).then((res) => res.data),
   adminReorderCards: (stepId: number, ids: number[]) =>
     client.post('/admin/cards/reorder', { step_id: stepId, ids }).then((res) => res.data),
 

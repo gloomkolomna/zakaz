@@ -122,7 +122,6 @@ class StepCard(Base):
     )
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
-    image_url = Column(String, nullable=True)
     price = Column(Integer, nullable=False, default=0, server_default="0")
     max_qty = Column(Integer, nullable=False, default=10, server_default="10")
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
@@ -130,9 +129,33 @@ class StepCard(Base):
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
     step = relationship("ProductStep", back_populates="cards")
+    images = relationship(
+        "StepCardImage",
+        back_populates="card",
+        order_by="StepCardImage.sort_order",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_step_cards_step_sort", "step_id", "sort_order"),
+    )
+
+
+class StepCardImage(Base):
+    __tablename__ = "step_card_images"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    card_id = Column(
+        Integer, ForeignKey("step_cards.id", ondelete="CASCADE"), nullable=False
+    )
+    image_url = Column(String, nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+
+    card = relationship("StepCard", back_populates="images")
+
+    __table_args__ = (
+        Index("ix_step_card_images_card_sort", "card_id", "sort_order"),
     )
 
 

@@ -5,7 +5,7 @@ import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 import config
 from db import get_db
@@ -32,6 +32,11 @@ class OrderIn(BaseModel):
 
 def _bad(message: str):
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+
+
+def _cover(card: StepCard) -> str | None:
+    images = sorted(card.images, key=lambda row: (row.sort_order, row.id))
+    return images[0].image_url if images else None
 
 
 def _check_rate_limit(db: Session, user: User) -> None:
@@ -102,6 +107,7 @@ def create_order(data: OrderIn, db: Session = Depends(get_db), user: User = Depe
 
     cards = (
         db.query(StepCard)
+        .options(selectinload(StepCard.images))
         .join(ProductStep, ProductStep.id == StepCard.step_id)
         .filter(StepCard.id.in_(seen), ProductStep.product_id == product.id)
         .all()
@@ -147,7 +153,7 @@ def create_order(data: OrderIn, db: Session = Depends(get_db), user: User = Depe
                 card_id=card.id,
                 step_title=card.step.title,
                 card_title=card.title,
-                image_url=card.image_url,
+                image_url=_cover(card),
                 price=card.price,
                 qty=qty,
                 sum=line_sum,

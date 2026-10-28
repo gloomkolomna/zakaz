@@ -43,7 +43,7 @@ VK Mini App **«СобериЗаказ»** — каталог-конструкт
 | 6 | Варианты в шаге | От 1 до N карточек (N не ограничено, типично 2–5); добавляются/редактируются в админке |
 | 7 | Корзина | **Один товар = один заказ.** Разные товары в одном заказе не смешиваются |
 | 8 | Цена в каталоге | На карточке товара — **«от N ₽»** = сумма самых дешёвых карточек по всем шагам товара |
-| 9 | Фото | По **1 фото** у товара и у карточки, тап — просмотр на весь экран (портал, z-100) |
+| 9 | Фото | У товара — **1 обложка**; у карточки — **1–10 фото** с галереей: крупное фото, ниже миниатюры; тап — зум. Первое фото карточки — обложка для сетки и заказа |
 | 10 | Данные покупателя | **Ничего не спрашиваем** — только VK-профиль (vk_id, имя). Связь и доставка — в ЛС ВК |
 | 11 | Оплата | **Нет** оплаты в приложении: заявка → владельцу, дальше переписка |
 | 12 | Аудитория | **Только подписчики сообщества** (VK API `groups.isMember`, кэш), админ — мимо гейта |
@@ -246,9 +246,15 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 
 ### step_cards
 `id` PK · `step_id` FK → product_steps (CASCADE) · `title` String ·
-`description` Text NULL · `image_url` String · `price` Int (рубли) ·
-`max_qty` Int (default 10) · `sort_order` Int · `is_active` Bool · `created_at`
-Индекс: `(step_id, sort_order)`.
+`description` Text NULL · `price` Int (рубли) · `max_qty` Int (default 10) ·
+`sort_order` Int · `is_active` Bool · `created_at`
+Индекс: `(step_id, sort_order)`. Фото — в `step_card_images`.
+
+### step_card_images
+`id` PK · `card_id` FK → step_cards (CASCADE) · `image_url` String ·
+`sort_order` Int · `created_at`
+До 10 фото на карточку; первое по `sort_order` — обложка.
+Индекс: `(card_id, sort_order)`.
 
 ### orders
 `id` PK · `user_id` FK → users.vk_id (CASCADE) · `buyer_name` String
@@ -313,6 +319,9 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 `is_early` = `early_until > now`; `can_order` = не ранний доступ или дон/админ;
 `early_reason` = `null` | `early_access`.
 
+Карточка в ответе: `{id,title,description,image_url,images:[{id,url,sort_order}],price,max_qty}`;
+`image_url` — обложка (первое фото), `images` — вся галерея.
+
 ### Заказы (покупатель)
 | Метод | Путь | Тело/ответ |
 |---|---|---|
@@ -373,7 +382,8 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 | POST | `/admin/steps/reorder` | `{product_id, ids:[...]}` |
 | GET/POST | `/admin/steps/{id}/cards` | карточки шага / создание |
 | PUT/DELETE | `/admin/cards/{id}` | правка / мягкое удаление |
-| POST/DELETE | `/admin/cards/{id}/image` | загрузка/сброс фото |
+| POST/DELETE | `/admin/cards/{id}/images` | загрузка фото (multipart, до 10) → `{id,url,sort_order}`; `DELETE /admin/cards/{id}/images/{image_id}` — удалить |
+| POST | `/admin/cards/{id}/images/reorder` | `{ids:[...]}` — порядок; первое фото — обложка |
 | POST | `/admin/cards/reorder` | `{step_id, ids:[...]}` |
 | GET | `/admin/orders` | фильтры `section_id, product_id, date_from, date_to, q, unread, status (new/done/cancelled), queue (1 = только очередь), cancel_unread, limit, offset`; ответ `{items, total, summary:{count, queue, unread, sum, cancelled, cancelled_unread}}`; у каждого элемента `queue_position` |
 | GET | `/admin/orders/{id}` | деталь: позиции, покупатель, сумма, статус, `queue_position`, отмена |
@@ -416,12 +426,12 @@ frontend/src/
   api/endpoints.ts                 # типы + все вызовы
   api/money.ts                     # формат цены, расчёт суммы
   components/MiniAppShell.tsx      # шапка ☰ + меню-оверлей + заголовок
-  components/*                     # CardTile, Stepper, ZoomModal, PriceTag,
-                                    # EmptyState, ConfirmDialog, ErrorBoundary,
-                                    # VideoBlock, VideoModal, EarlyBadge
+  components/*                     # CardTile, CardGallery, Stepper, ZoomModal,
+                                    # PriceTag, EmptyState, ConfirmDialog,
+                                    # ErrorBoundary, VideoBlock, VideoModal, EarlyBadge
   pages/Catalog.tsx                # разделы + товары (бейдж «До анонса»)
   pages/Product.tsx                # товар: видео, «до анонса», старт сборки
-  pages/Builder.tsx                # конфигуратор (шаги в ?step=)
+  pages/Builder.tsx                # конфигуратор (шаги в ?step=), галерея карточки
   pages/Review.tsx                 # «Ваш заказ»: редактируемая легенда + отправка
   pages/OrderSuccess.tsx           # заказ №N
   pages/MyOrders.tsx               # мои заказы: список
@@ -456,6 +466,9 @@ frontend/src/
   при отправке; расхождение не критично (сервер — истина).
 - Индикатор: «Шаг N из M» + точки; в шапке — текущая сумма (опционально,
   только если > 0).
+- **Галерея карточки**: после выбора под сеткой — крупное фото и миниатюры.
+  Клик по крупному — зум; клик по миниатюре ставит её на место крупного и
+  открывает зум. Кнопка «Фото» на карточке показывает галерею, не снимая выбор.
 
 ### Видео и «до анонса» — поведение
 

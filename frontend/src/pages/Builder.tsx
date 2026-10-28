@@ -1,18 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { api, type ProductDetail } from '../api/endpoints';
+import { api, type Card, type ProductDetail } from '../api/endpoints';
 import { readDraft, writeDraft } from '../api/draft';
 import { formatPrice } from '../api/money';
 import { mediaUrl } from '../api/media';
-import {
-  selectedInStep,
-  selectionTotal,
-  setQty,
-  stepHasSelection,
-  toggleCard,
-  type Selected,
-} from '../api/selection';
+import { selectedInStep, selectionTotal, setQty, toggleCard, type Selected } from '../api/selection';
 import BackLink from '../components/BackLink';
+import CardGallery from '../components/CardGallery';
 import Skeleton from '../components/Skeleton';
 import Stepper from '../components/Stepper';
 
@@ -23,6 +17,7 @@ export default function Builder() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [selected, setSelected] = useState<Selected>(() => readDraft(productId));
+  const [galleryCardId, setGalleryCardId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,10 +45,21 @@ export default function Builder() {
   const stepIndex = steps.length === 0 ? 0 : Math.min(Math.max(Number.isFinite(rawStep) ? rawStep : 0, 0), steps.length - 1);
   const step = steps[stepIndex];
   const total = useMemo(() => selectionTotal(selected, steps), [selected, steps]);
+  const galleryCard = step?.cards.find((card) => card.id === galleryCardId) || null;
 
   function apply(next: Selected) {
     setSelected(next);
     writeDraft(productId, next);
+  }
+
+  function chooseCard(card: Card) {
+    const active = Boolean(selected[card.id]);
+    apply(toggleCard(selected, step, card));
+    setGalleryCardId(active ? null : card.id);
+  }
+
+  function viewCard(card: Card) {
+    setGalleryCardId(card.id);
   }
 
   function goNext() {
@@ -149,11 +155,11 @@ export default function Builder() {
               role="button"
               tabIndex={0}
               aria-pressed={active}
-              onClick={() => apply(toggleCard(selected, step, card))}
+              onClick={() => chooseCard(card)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
-                  apply(toggleCard(selected, step, card));
+                  chooseCard(card);
                 }
               }}
             >
@@ -162,6 +168,20 @@ export default function Builder() {
                   <img src={mediaUrl(card.image_url)} alt={card.title} loading="lazy" />
                 ) : (
                   <span className="image-placeholder">Фото</span>
+                )}
+                {card.images.length > 0 && (
+                  <button
+                    className="pick-photo"
+                    type="button"
+                    aria-label={`Фото: ${card.title}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      viewCard(card);
+                    }}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
+                    Фото
+                  </button>
                 )}
               </div>
               <div className="pick-body">
@@ -183,6 +203,10 @@ export default function Builder() {
           );
         })}
       </div>
+
+      {galleryCard && (
+        <CardGallery key={galleryCard.id} title={galleryCard.title} images={galleryCard.images} />
+      )}
 
       <div className="bar">
         {!step.is_required && (

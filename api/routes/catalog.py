@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 from deps import get_current_user
-from models import Product, Section, User
+from models import Product, Section, StepCard, User
 from services.catalog import filled_steps, from_price_map, visible_product
 from services.early import can_order, is_early
 from services.reserve import has_reservation
@@ -27,6 +27,22 @@ def _product_brief(product: Product, prices: dict[int, int | None], ordered: int
         "sold_out": is_sold_out(product, ordered),
         "is_early": is_early(product),
         "early_until": product.early_until.isoformat() if product.early_until else None,
+    }
+
+
+def _card_payload(card: StepCard) -> dict:
+    images = [
+        {"id": image.id, "url": image.image_url, "sort_order": image.sort_order}
+        for image in sorted(card.images, key=lambda row: (row.sort_order, row.id))
+    ]
+    return {
+        "id": card.id,
+        "title": card.title,
+        "description": card.description,
+        "image_url": images[0]["url"] if images else None,
+        "images": images,
+        "price": card.price,
+        "max_qty": card.max_qty,
     }
 
 
@@ -108,14 +124,7 @@ def product_detail(
                 "mode": step.selection_mode,
                 "is_required": bool(step.is_required),
                 "cards": [
-                    {
-                        "id": card.id,
-                        "title": card.title,
-                        "description": card.description,
-                        "image_url": card.image_url,
-                        "price": card.price,
-                        "max_qty": card.max_qty,
-                    }
+                    _card_payload(card)
                     for card in sorted(step.cards, key=lambda row: (row.sort_order, row.id))
                     if card.is_active
                 ],

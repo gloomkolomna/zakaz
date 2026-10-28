@@ -1922,6 +1922,18 @@ a.brand:active {
   margin-bottom: 16px;
 }
 
+.admin-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-page-head .section-title {
+  margin: 0 0 4px;
+}
+
 .player-head .section-title {
   margin: 0 0 4px;
 }
@@ -2077,6 +2089,10 @@ a.player-order:hover {
   }
 
   .player-head {
+    flex-direction: column;
+  }
+
+  .admin-page-head {
     flex-direction: column;
   }
 }

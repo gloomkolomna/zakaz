@@ -19,6 +19,7 @@ const Info = lazy(() => import('./pages/Info'));
 const Admin = lazy(() => import('./pages/admin/Admin'));
 const SectionsTab = lazy(() => import('./pages/admin/SectionsTab'));
 const ProductsTab = lazy(() => import('./pages/admin/ProductsTab'));
+const ProductCreate = lazy(() => import('./pages/admin/ProductCreate'));
 const ProductEdit = lazy(() => import('./pages/admin/ProductEdit'));
 const OrdersTab = lazy(() => import('./pages/admin/OrdersTab'));
 const AdminOrderDetail = lazy(() => import('./pages/admin/AdminOrderDetail'));
@@ -105,6 +106,7 @@ export default function App() {
               <Route index element={<Navigate to="sections" replace />} />
               <Route path="sections" element={<SectionsTab />} />
               <Route path="products" element={<ProductsTab />} />
+              <Route path="products/new" element={<ProductCreate />} />
               <Route path="products/:id" element={<ProductEdit />} />
               <Route path="orders" element={<OrdersTab />} />
               <Route path="orders/:id" element={<AdminOrderDetail />} />

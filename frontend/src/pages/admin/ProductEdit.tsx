@@ -17,6 +17,7 @@ interface ProductForm {
   section_id: number;
   title: string;
   description: string;
+  stock: number;
   sort_order: number;
   is_active: boolean;
 }
@@ -43,6 +44,7 @@ export default function ProductEdit() {
           section_id: data.section_id,
           title: data.title,
           description: data.description || '',
+          stock: data.stock,
           sort_order: data.sort_order,
           is_active: data.is_active,
         });
@@ -188,10 +190,29 @@ export default function ProductEdit() {
             <label htmlFor="edit-sort">Порядок</label>
             <input id="edit-sort" type="number" value={form.sort_order} onChange={(event) => update('sort_order', Number(event.target.value))} />
           </div>
-          <label className="checkbox">
-            <input type="checkbox" checked={form.is_active} onChange={(event) => update('is_active', event.target.checked)} />
-            Опубликован — виден в каталоге
-          </label>
+          <div className="field">
+            <label htmlFor="edit-stock">Кол-во копий</label>
+            <input
+              id="edit-stock"
+              type="number"
+              min={0}
+              value={form.stock || ''}
+              placeholder="Без ограничения"
+              onChange={(event) => update('stock', Number(event.target.value) || 0)}
+            />
+            <div className="admin-muted">
+              {product.stock > 0
+                ? `Заказано ${product.ordered_count} из ${product.stock}${product.sold_out ? ' · товар закончился' : ''}`
+                : `Заказано ${product.ordered_count}, без ограничения`}
+            </div>
+          </div>
+        </div>
+        <label className="checkbox">
+          <input type="checkbox" checked={form.is_active} onChange={(event) => update('is_active', event.target.checked)} />
+          Опубликован — виден в каталоге
+        </label>
+        <div className="admin-muted">
+          Пусто или 0 — без ограничения. Одна копия = один заказ; отменённые заказы копию не занимают.
         </div>
         <div>
           <button className="btn" type="button" onClick={save} disabled={saving || !form.title.trim()}>

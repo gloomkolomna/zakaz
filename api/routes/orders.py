@@ -15,6 +15,7 @@ from services.catalog import filled_steps
 from services.early import can_order
 from services.order_view import order_brief, order_detail
 from services.queue import next_queue_order, queue_map
+from services.stock import is_sold_out, ordered_count
 
 router = APIRouter(prefix="/api", tags=["orders"])
 
@@ -80,6 +81,12 @@ def create_order(data: OrderIn, db: Session = Depends(get_db), user: User = Depe
                 "code": reason or "early_access",
                 "message": "Товар ещё не открыт для всех — сейчас доступен донам сообщества",
             },
+        )
+
+    if is_sold_out(product, ordered_count(db, product.id)):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "sold_out", "message": "Товар закончился"},
         )
 
     _check_rate_limit(db, user)

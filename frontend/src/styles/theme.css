@@ -283,6 +283,8 @@ h1 {
 
 .price-note { font-size: 13px; color: var(--muted); }
 
+.sold-out-note { display: inline-block; color: var(--red); font-size: 13px; font-weight: 400; white-space: nowrap; }
+
 .body-text {
   margin: 16px 0 0;
   color: var(--ink-2);

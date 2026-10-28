@@ -70,6 +70,7 @@ VK Mini App **«СобериЗаказ»** — каталог-конструкт
 | 33 | Логи | Страница показывает только `level=error`; строка раскрывается в source/event/method/path/status/VK ID/IP/UTC/message/details/traceback |
 | 34 | Заказчики | Поиск по ФИО/VK ID; карточка заказчика с его заказами; заказы фильтруются по `buyer_id`, имя — через общий `q` |
 | 35 | Товары в админке | По умолчанию все товары; фильтр по разделу (включая «Все разделы») и поиск по названию/ID; создание — отдельный экран по кнопке «Добавить товар» |
+| 36 | Копии товара | У товара — необязательное **«Кол-во копий»** (`stock`; 0 — без ограничения). **Одна копия = один заказ**; занимают все заказы, кроме отменённых. Когда заказов не меньше лимита, товар остаётся в каталоге, но заказать его нельзя, в каталоге и на карточке — **«(товар закончился)»** |
 
 ---
 
@@ -228,7 +229,8 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 `video_url` String NULL (внешняя ссылка) ·
 `video_file_url` String NULL (загруженный файл) ·
 `video_poster_url` String NULL ·
-`early_until` DateTime NULL (конец окна «до анонса»)
+`early_until` DateTime NULL (конец окна «до анонса») ·
+`stock` Int (0 — без ограничения; 1 копия = 1 заказ)
 Индексы: `(section_id, sort_order)`, `(early_until)`.
 
 ### donor_cache
@@ -295,8 +297,8 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 ### Каталог (покупатель)
 | Метод | Путь | Назначение |
 |---|---|---|
-| GET | `/catalog` | `{title, description, sections:[{id,title,products:[{id,title,image_url,from_price,steps_count,is_early,early_until}]}]}`; заголовок и описание редактируются в админке |
-| GET | `/products/{id}` | Товар + шаги + карточки: `{id,title,description,image_url,from_price,video:{url,file_url,poster_url},early_until,is_early,can_order,early_reason,steps:[...]}` |
+| GET | `/catalog` | `{title, description, sections:[{id,title,products:[{id,title,image_url,from_price,steps_count,stock,sold_out,is_early,early_until}]}]}`; заголовок и описание редактируются в админке |
+| GET | `/products/{id}` | Товар + шаги + карточки: `{id,title,description,image_url,from_price,stock,sold_out,video:{url,file_url,poster_url},early_until,is_early,can_order,early_reason,steps:[...]}` |
 | GET | `/info` | `{delivery, payment, contacts, privacy}` |
 
 `from_price` = Σ минимальных цен по шагам (только активные карточки);
@@ -314,11 +316,12 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 
 **Валидации POST /orders** (все → 400 с понятным текстом):
 товар существует и активен; **если `early_until > now` и пользователь не дон
-и не админ — 403 `early_access`**; `items` 1..100; карточки существуют, активны,
-принадлежат шагам этого товара; нет дублей `card_id`; `1 ≤ qty ≤ max_qty`;
-в шаге `single` — не более одной карточки; каждый `is_required` шаг имеет
-≥1 карточку. Сумма считается **на сервере** из БД, клиентская игнорируется.
-Создание заказа и позиций — одна транзакция.
+и не админ — 403 `early_access`**; **если `stock > 0` и неотменённых заказов
+уже не меньше `stock` — 409 `sold_out`**; `items` 1..100; карточки существуют,
+активны, принадлежат шагам этого товара; нет дублей `card_id`;
+`1 ≤ qty ≤ max_qty`; в шаге `single` — не более одной карточки; каждый
+`is_required` шаг имеет ≥1 карточку. Сумма считается **на сервере** из БД,
+клиентская игнорируется. Создание заказа и позиций — одна транзакция.
 
 **Отмена**: только владелец заказа; `status='cancelled'`, `cancelled_at=now()`,
 `cancel_seen_at=NULL`; повторная отмена — 409; чужая — 403; выполненный — 409.
@@ -338,8 +341,8 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 | GET/POST | `/admin/sections` | список / создание |
 | PUT/DELETE | `/admin/sections/{id}` | правка / удаление (каскадом с товарами) |
 | POST | `/admin/sections/reorder` | `{ids:[...]}` |
-| GET/POST | `/admin/products?section_id=` | список / создание |
-| GET/PUT/DELETE | `/admin/products/{id}` | деталь / правка / удаление (история заказов — снапшоты) |
+| GET/POST | `/admin/products?section_id=` | список / создание (`stock`, `ordered_count`, `sold_out` в ответе) |
+| GET/PUT/DELETE | `/admin/products/{id}` | деталь / правка (`stock`) / удаление (история заказов — снапшоты) |
 | POST/DELETE | `/admin/products/{id}/image` | загрузка/сброс обложки |
 | POST | `/admin/products/{id}/video` | загрузка файла (multipart, ≤ 100 МБ, mp4/webm/mov) → `{url}` |
 | PUT | `/admin/products/{id}/video-url` | `{url}` — внешняя ссылка; `null` очищает |

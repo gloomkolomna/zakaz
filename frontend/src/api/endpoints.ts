@@ -30,6 +30,8 @@ export interface ProductBrief {
   image_url: string | null;
   from_price: number | null;
   steps_count: number;
+  stock: number;
+  sold_out: boolean;
   is_early: boolean;
   early_until: string | null;
 }
@@ -71,6 +73,8 @@ export interface ProductDetail {
   image_url: string | null;
   section_title: string;
   from_price: number | null;
+  stock: number;
+  sold_out: boolean;
   video: Video | null;
   early_until: string | null;
   is_early: boolean;
@@ -169,6 +173,9 @@ export interface AdminProduct {
   video_poster_url: string | null;
   early_until: string | null;
   is_early: boolean;
+  stock: number;
+  ordered_count: number;
+  sold_out: boolean;
   sort_order: number;
   is_active: boolean;
   from_price: number | null;
@@ -288,7 +295,7 @@ export const api = {
       .then((res) => res.data),
   adminProduct: (id: number) =>
     client.get<AdminProduct>(`/admin/products/${id}`).then((res) => res.data),
-  adminCreateProduct: (data: { section_id: number; title: string; description?: string; sort_order?: number; is_active?: boolean }) =>
+  adminCreateProduct: (data: { section_id: number; title: string; description?: string; stock?: number; sort_order?: number; is_active?: boolean }) =>
     client.post<AdminProduct>('/admin/products', data).then((res) => res.data),
   adminUpdateProduct: (id: number, data: Partial<AdminProduct>) =>
     client.put<AdminProduct>(`/admin/products/${id}`, data).then((res) => res.data),

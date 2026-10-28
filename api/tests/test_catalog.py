@@ -337,6 +337,45 @@ def test_admin_product_validation_and_404(admin_client, db):
     assert admin_client.delete("/api/admin/products/99999").status_code == 404
 
 
+def test_admin_sets_stock_and_sees_ordered_count(admin_client, db):
+    section = make_section(db)
+    product = make_product(db, section)
+    step = make_step(db, product, is_required=True)
+    card = make_card(db, step)
+
+    updated = admin_client.put(f"/api/admin/products/{product.id}", json={"stock": 2})
+    assert updated.status_code == 200
+    assert updated.json()["stock"] == 2
+    assert updated.json()["ordered_count"] == 0
+    assert updated.json()["sold_out"] is False
+
+    with make_user_client(123) as player:
+        assert player.post(
+            "/api/orders",
+            json={"product_id": product.id, "items": [{"card_id": card.id, "qty": 1}]},
+        ).status_code == 201
+
+    detail = admin_client.get(f"/api/admin/products/{product.id}").json()
+    assert detail["ordered_count"] == 1
+    assert detail["sold_out"] is False
+
+    listing = admin_client.get("/api/admin/products").json()
+    row = next(item for item in listing if item["id"] == product.id)
+    assert row["ordered_count"] == 1
+    assert row["sold_out"] is False
+
+    assert admin_client.put(f"/api/admin/products/{product.id}", json={"stock": 1}).status_code == 200
+    assert admin_client.get(f"/api/admin/products/{product.id}").json()["sold_out"] is True
+    assert admin_client.put(f"/api/admin/products/{product.id}", json={"stock": -1}).status_code == 400
+
+    created = admin_client.post(
+        "/api/admin/products",
+        json={"section_id": section.id, "title": "С копиями", "stock": 3},
+    )
+    assert created.status_code == 201
+    assert created.json()["stock"] == 3
+
+
 def test_product_image_upload_and_reset(admin_client, db, tmp_path, monkeypatch):
     monkeypatch.setattr(config, "UPLOADS_DIR", str(tmp_path))
     section = make_section(db)

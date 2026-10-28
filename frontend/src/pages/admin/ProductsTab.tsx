@@ -127,12 +127,14 @@ export default function ProductsTab() {
                   <div className="admin-row-title">
                     {product.title}{' '}
                     {!product.is_active && <span className="pill-draft">Скрыт</span>}
+                    {product.sold_out && <span className="pill-cancel">Закончился</span>}
                     {product.is_early && <EarlyBadge until={product.early_until} />}
                   </div>
                   <span className="admin-muted">{formatPrice(product.from_price)}</span>
                 </div>
                 <div className="admin-muted">
                   {product.section_title} · {product.steps_count ?? product.steps?.length ?? 0} шаг. ·{' '}
+                  {product.stock > 0 ? `копий: ${product.ordered_count} из ${product.stock}` : 'копий без ограничения'} ·{' '}
                   {product.image_url ? 'обложка есть' : 'без обложки'}
                 </div>
                 <div className="admin-actions">

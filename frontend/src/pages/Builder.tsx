@@ -84,15 +84,17 @@ export default function Builder() {
     );
   }
 
-  if (!product.can_order) {
+  if (product.sold_out || !product.can_order) {
     return (
       <main className="page">
         <BackLink to={`/product/${productId}`}>К товару</BackLink>
-        <h1>Сборка ещё закрыта</h1>
+        <h1>{product.sold_out ? 'Товар закончился' : 'Сборка ещё закрыта'}</h1>
         <p className="lede">
-          {product.early_reason === 'early_access'
-            ? 'Товар доступен донам сообщества до анонса.'
-            : 'Товар пока недоступен.'}
+          {product.sold_out
+            ? 'Все копии товара уже заказаны — отправить новый заказ нельзя.'
+            : product.early_reason === 'early_access'
+              ? 'Товар доступен донам сообщества до анонса.'
+              : 'Товар пока недоступен.'}
         </p>
       </main>
     );

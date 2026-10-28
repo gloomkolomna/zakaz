@@ -20,6 +20,7 @@ def make_product(
     sort_order=0,
     is_active=True,
     early_until=None,
+    stock=0,
 ):
     row = Product(
         section_id=section.id,
@@ -28,6 +29,7 @@ def make_product(
         sort_order=sort_order,
         is_active=is_active,
         early_until=early_until,
+        stock=stock,
     )
     db.add(row)
     db.commit()

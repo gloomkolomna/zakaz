@@ -66,6 +66,7 @@ class Product(Base):
     video_file_url = Column(String, nullable=True)
     video_poster_url = Column(String, nullable=True)
     early_until = Column(DateTime, nullable=True)
+    stock = Column(Integer, nullable=False, default=0, server_default="0")
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
     is_active = Column(Boolean, nullable=False, default=False, server_default="0")
     created_at = Column(DateTime, nullable=False, default=utcnow)

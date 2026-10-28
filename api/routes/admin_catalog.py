@@ -12,6 +12,7 @@ from deps import require_role
 from models import Order, OrderItem, Product, ProductStep, Section, StepCard, User, utcnow
 from services.catalog import filled_steps, from_price_map
 from services.early import is_early
+from services.stock import is_sold_out, ordered_map
 from services.uploads import remove_upload, save_image, save_video
 
 router = APIRouter(prefix="/api/admin", tags=["admin-catalog"])
@@ -34,6 +35,14 @@ def _url(value: str | None) -> str | None:
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ссылка должна начинаться с http:// или https://")
     return cleaned
+
+
+def _stock(value: int | None) -> int | None:
+    if value is None:
+        return None
+    if value < 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Кол-во копий не может быть отрицательным")
+    return value
 
 
 def _next_section_order(db: Session) -> int:
@@ -90,6 +99,7 @@ def _video(product: Product) -> dict | None:
 
 def _admin_product(product: Product, db: Session) -> dict:
     steps = sorted(product.steps, key=lambda step: (step.sort_order, step.id))
+    ordered = ordered_map(db, [product.id]).get(product.id, 0)
     return {
         "id": product.id,
         "section_id": product.section_id,
@@ -102,6 +112,9 @@ def _admin_product(product: Product, db: Session) -> dict:
         "video_poster_url": product.video_poster_url,
         "early_until": product.early_until.isoformat() if product.early_until else None,
         "is_early": is_early(product),
+        "stock": int(product.stock or 0),
+        "ordered_count": ordered,
+        "sold_out": is_sold_out(product, ordered),
         "sort_order": product.sort_order,
         "is_active": bool(product.is_active),
         "from_price": from_price_map(db, [product.id]).get(product.id),
@@ -135,6 +148,7 @@ class ProductIn(BaseModel):
     section_id: int | None = None
     title: str | None = None
     description: str | None = None
+    stock: int | None = None
     sort_order: int | None = None
     is_active: bool | None = None
 
@@ -332,6 +346,7 @@ def list_products(
             ))
     rows = query.order_by(Product.section_id, Product.sort_order, Product.id).all()
     prices = from_price_map(db, [row.id for row in rows])
+    ordered = ordered_map(db, [row.id for row in rows])
     return [
         {
             "id": row.id,
@@ -343,6 +358,9 @@ def list_products(
             "video": _video(row),
             "early_until": row.early_until.isoformat() if row.early_until else None,
             "is_early": is_early(row),
+            "stock": int(row.stock or 0),
+            "ordered_count": ordered.get(row.id, 0),
+            "sold_out": is_sold_out(row, ordered.get(row.id, 0)),
             "sort_order": row.sort_order,
             "is_active": bool(row.is_active),
             "steps_count": len(filled_steps(row)),
@@ -361,6 +379,7 @@ def create_product(data: ProductIn, db: Session = Depends(get_db), user: User = 
         section_id=section.id,
         title=_title(data.title or ""),
         description=data.description,
+        stock=_stock(data.stock) or 0,
         sort_order=data.sort_order if data.sort_order is not None else _next_product_order(db, section.id),
         is_active=False if data.is_active is None else data.is_active,
     )
@@ -384,6 +403,9 @@ def update_product(product_id: int, data: ProductIn, db: Session = Depends(get_d
         row.description = data.description
     if data.section_id is not None:
         row.section_id = _section(db, data.section_id).id
+    stock = _stock(data.stock)
+    if stock is not None:
+        row.stock = stock
     if data.sort_order is not None:
         row.sort_order = data.sort_order
     if data.is_active is not None:

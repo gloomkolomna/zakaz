@@ -73,6 +73,7 @@ export default function Catalog() {
                   </div>
                   <div className="product-name">
                     {product.title}
+                    {product.sold_out && <span className="sold-out-note"> (товар закончился)</span>}
                     {product.is_early && <EarlyBadge until={product.early_until} />}
                   </div>
                   <div className="product-meta">

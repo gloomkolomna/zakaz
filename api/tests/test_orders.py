@@ -163,6 +163,88 @@ def test_cancel_keeps_composition_and_blocks_repeat(player_client, db):
     assert len(detail["items"]) == 2
 
 
+def test_stock_limit_marks_product_sold_out(player_client, db):
+    product, small, large, linen = _shop(db)
+    product.stock = 1
+    db.commit()
+
+    assert player_client.post(
+        "/api/orders",
+        json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+    ).status_code == 201
+
+    with make_user_client(124) as other:
+        resp = other.post(
+            "/api/orders",
+            json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+        )
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == {"code": "sold_out", "message": "Товар закончился"}
+
+    detail = player_client.get(f"/api/products/{product.id}").json()
+    assert detail["stock"] == 1
+    assert detail["sold_out"] is True
+
+    catalog = player_client.get("/api/catalog").json()
+    brief = catalog["sections"][0]["products"][0]
+    assert brief["sold_out"] is True
+
+
+def test_completed_order_still_occupies_stock(player_client, db):
+    product, small, large, linen = _shop(db)
+    product.stock = 1
+    db.commit()
+
+    order_id = player_client.post(
+        "/api/orders",
+        json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+    ).json()["id"]
+    with make_user_client(400977, "admin") as admin:
+        assert admin.post(f"/api/admin/orders/{order_id}/complete").status_code == 200
+
+    with make_user_client(124) as other:
+        assert other.post(
+            "/api/orders",
+            json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+        ).status_code == 409
+
+
+def test_cancelled_order_frees_stock(player_client, db):
+    product, small, large, linen = _shop(db)
+    product.stock = 1
+    db.commit()
+
+    order_id = player_client.post(
+        "/api/orders",
+        json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+    ).json()["id"]
+    assert player_client.post(f"/api/orders/{order_id}/cancel").status_code == 200
+    assert player_client.get(f"/api/products/{product.id}").json()["sold_out"] is False
+
+    with make_user_client(124) as other:
+        assert other.post(
+            "/api/orders",
+            json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+        ).status_code == 201
+
+
+def test_stock_zero_means_unlimited(player_client, db):
+    product, small, large, linen = _shop(db)
+    product.stock = 0
+    db.commit()
+
+    assert player_client.post(
+        "/api/orders",
+        json=_payload(product, [{"card_id": small.id, "qty": 1}]),
+    ).status_code == 201
+    with make_user_client(124) as other:
+        assert other.post(
+            "/api/orders",
+            json=_payload(product, [{"card_id": large.id, "qty": 1}]),
+        ).status_code == 201
+    assert player_client.get(f"/api/products/{product.id}").json()["sold_out"] is False
+
+
 def test_done_order_cannot_be_cancelled(player_client, db):
     product, small, large, linen = _shop(db)
     order_id = player_client.post(

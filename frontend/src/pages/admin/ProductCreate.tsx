@@ -14,6 +14,7 @@ export default function ProductCreate() {
   );
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [stock, setStock] = useState('');
   const [sortOrder, setSortOrder] = useState('');
   const [active, setActive] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -34,6 +35,11 @@ export default function ProductCreate() {
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!title.trim() || sectionId === '') return;
+    const parsedStock = stock.trim() ? Number(stock) : 0;
+    if (!Number.isFinite(parsedStock) || parsedStock < 0) {
+      setError('Кол-во копий не может быть отрицательным');
+      return;
+    }
     setSaving(true);
     setError(null);
     const order = sortOrder.trim() ? Number(sortOrder) : undefined;
@@ -41,6 +47,7 @@ export default function ProductCreate() {
       section_id: sectionId,
       title: title.trim(),
       description: description.trim() || undefined,
+      stock: parsedStock,
       sort_order: order !== undefined && Number.isFinite(order) ? order : undefined,
       is_active: active,
     })
@@ -115,6 +122,19 @@ export default function ProductCreate() {
             onChange={(event) => setDescription(event.target.value)}
             placeholder="Коротко о товаре"
           />
+        </div>
+
+        <div className="field">
+          <label htmlFor="create-stock">Кол-во копий</label>
+          <input
+            id="create-stock"
+            type="number"
+            min={0}
+            value={stock}
+            onChange={(event) => setStock(event.target.value)}
+            placeholder="Без ограничения"
+          />
+          <div className="admin-muted">Пусто или 0 — без ограничения. Одна копия = один заказ.</div>
         </div>
 
         <div className="field">

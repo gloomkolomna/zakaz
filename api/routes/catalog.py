@@ -8,12 +8,13 @@ from deps import get_current_user
 from models import Product, Section, User
 from services.catalog import filled_steps, from_price_map
 from services.early import can_order, is_early
+from services.stock import is_sold_out, ordered_map
 from services.texts import get_catalog_texts, get_texts
 
 router = APIRouter(prefix="/api", tags=["catalog"])
 
 
-def _product_brief(product: Product, prices: dict[int, int | None]) -> dict:
+def _product_brief(product: Product, prices: dict[int, int | None], ordered: int) -> dict:
     steps = filled_steps(product)
     return {
         "id": product.id,
@@ -21,6 +22,8 @@ def _product_brief(product: Product, prices: dict[int, int | None]) -> dict:
         "image_url": product.image_url,
         "from_price": prices.get(product.id) if steps else None,
         "steps_count": len(steps),
+        "stock": int(product.stock or 0),
+        "sold_out": is_sold_out(product, ordered),
         "is_early": is_early(product),
         "early_until": product.early_until.isoformat() if product.early_until else None,
     }
@@ -41,6 +44,7 @@ def catalog(db: Session = Depends(get_db), user: User = Depends(get_current_user
         if product.is_active
     ]
     prices = from_price_map(db, product_ids)
+    ordered = ordered_map(db, product_ids)
     texts = get_catalog_texts(db)
     return {
         "title": texts["catalog_title"],
@@ -50,7 +54,7 @@ def catalog(db: Session = Depends(get_db), user: User = Depends(get_current_user
                 "id": section.id,
                 "title": section.title,
                 "products": [
-                    _product_brief(product, prices)
+                    _product_brief(product, prices, ordered.get(product.id, 0))
                     for product in sorted(section.products, key=lambda row: (row.sort_order, row.id))
                     if product.is_active
                 ],
@@ -72,6 +76,7 @@ def product_detail(
 
     steps = filled_steps(product)
     prices = from_price_map(db, [product.id])
+    ordered = ordered_map(db, [product.id]).get(product.id, 0)
     allowed, reason = can_order(db, user, product)
     return {
         "id": product.id,
@@ -80,6 +85,8 @@ def product_detail(
         "image_url": product.image_url,
         "section_title": product.section.title,
         "from_price": prices.get(product.id) if steps else None,
+        "stock": int(product.stock or 0),
+        "sold_out": is_sold_out(product, ordered),
         "video": {
             "url": product.video_url,
             "file_url": product.video_file_url,

@@ -52,7 +52,7 @@ export default function Review() {
   }
 
   function submit() {
-    if (!product || submitting || count === 0 || missing.length > 0) return;
+    if (!product || product.sold_out || submitting || count === 0 || missing.length > 0) return;
     setSubmitting(true);
     setError(null);
     api.createOrder(product.id, buildItems(selected, steps))
@@ -105,6 +105,15 @@ export default function Review() {
       <BackLink to={`/product/${productId}/build`}>К шагам</BackLink>
       <h1>Ваш заказ</h1>
       <div className="legend-title">{product.title}</div>
+
+      {product.sold_out && (
+        <div className="alert">
+          <div className="alert-body">
+            <div className="alert-title">Товар закончился</div>
+            <div className="alert-sub">Все копии уже заказаны — отправить заказ нельзя.</div>
+          </div>
+        </div>
+      )}
 
       {missing.map((step) => (
         <div className="alert" key={step.id}>
@@ -162,10 +171,10 @@ export default function Review() {
         <button
           className="btn"
           type="button"
-          disabled={submitting || count === 0 || missing.length > 0}
+          disabled={submitting || product.sold_out || count === 0 || missing.length > 0}
           onClick={submit}
         >
-          {submitting ? 'Отправляю…' : 'Отправить заказ'}
+          {product.sold_out ? 'Товар закончился' : submitting ? 'Отправляю…' : 'Отправить заказ'}
         </button>
       </div>
 

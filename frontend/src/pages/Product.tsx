@@ -65,6 +65,7 @@ export default function Product() {
           <div className="legend-title">{product.section_title}</div>
           <h1>
             {product.title}
+            {product.sold_out && <span className="sold-out-note"> (товар закончился)</span>}
             {product.is_early && <EarlyBadge until={product.early_until} />}
           </h1>
           <div className="price-row">
@@ -84,6 +85,13 @@ export default function Product() {
                 Скоро в продаже
               </button>
               <div className="blocked-note">Товар ещё наполняется.</div>
+            </div>
+          ) : product.sold_out ? (
+            <div className="blocked-cta">
+              <button className="btn block" type="button" disabled>
+                Собрать заказ
+              </button>
+              <div className="blocked-note">Товар закончился.</div>
             </div>
           ) : product.can_order ? (
             <div className="blocked-cta">

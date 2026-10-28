@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from sqlalchemy import func
 
-from models import ProductStep, StepCard
+from models import Product, ProductStep, StepCard
+
+
+def visible_product(db, product_id: int) -> Product | None:
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if product is None or not product.is_active or not product.section.is_active:
+        return None
+    return product
 
 
 def from_price_map(db, product_ids: list[int]) -> dict[int, int | None]:

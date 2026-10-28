@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -184,9 +184,24 @@ class OrderItem(Base):
     )
 
 
+class ReserveEntry(Base):
+    __tablename__ = "reserve_entries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(
+        Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id = Column(Integer, ForeignKey("users.vk_id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("product_id", "user_id", name="uq_reserve_entries_product_user"),
+        Index("ix_reserve_entries_product_created", "product_id", "created_at"),
+    )
+
+
 class Setting(Base):
     __tablename__ = "settings"
-
     key = Column(String, primary_key=True)
     value = Column(Text, nullable=False)
 

@@ -71,6 +71,7 @@ VK Mini App **«СобериЗаказ»** — каталог-конструкт
 | 34 | Заказчики | Поиск по ФИО/VK ID; карточка заказчика с его заказами; заказы фильтруются по `buyer_id`, имя — через общий `q` |
 | 35 | Товары в админке | По умолчанию все товары; фильтр по разделу (включая «Все разделы») и поиск по названию/ID; создание — отдельный экран по кнопке «Добавить товар» |
 | 36 | Копии товара | У товара — необязательное **«Кол-во копий»** (`stock`; 0 — без ограничения). **Одна копия = один заказ**; занимают все заказы, кроме отменённых. Когда заказов не меньше лимита, товар остаётся в каталоге, но заказать его нельзя, в каталоге и на карточке — **«(товар закончился)»** |
+| 37 | Резерв | У закончившегося товара — кнопка **«Сообщить, когда появится»**. Заявка попадает в админку → **«Резерв»**: кто, товар, дата, VK. Покупатель видит «Вы в резерве» и может отменить. Когда место освобождается, на вкладке — красный бейдж и плашка **«Освободилось место»**; админ связывается вручную |
 
 ---
 
@@ -270,6 +271,12 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 `image_url` String · `price` Int · `qty` Int · `sum` Int
 Индекс: `order_id`.
 
+### reserve_entries
+`id` PK · `product_id` FK → products (CASCADE) · `user_id` FK → users.vk_id
+(CASCADE) · `created_at` DateTime
+Уникальность `(product_id, user_id)` — одна заявка на товар у покупателя;
+индекс `(product_id, created_at)`.
+
 ### settings
 `key` PK · `value` Text — тексты (`text.catalog_title`, `text.catalog_description`,
 `text.delivery`, `text.payment`, `text.contacts`, `text.privacy`), служебные флаги.
@@ -298,7 +305,7 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 | Метод | Путь | Назначение |
 |---|---|---|
 | GET | `/catalog` | `{title, description, sections:[{id,title,products:[{id,title,image_url,from_price,steps_count,stock,sold_out,is_early,early_until}]}]}`; заголовок и описание редактируются в админке |
-| GET | `/products/{id}` | Товар + шаги + карточки: `{id,title,description,image_url,from_price,stock,sold_out,video:{url,file_url,poster_url},early_until,is_early,can_order,early_reason,steps:[...]}` |
+| GET | `/products/{id}` | Товар + шаги + карточки: `{id,title,description,image_url,from_price,stock,sold_out,reserved,video:{url,file_url,poster_url},early_until,is_early,can_order,early_reason,steps:[...]}` |
 | GET | `/info` | `{delivery, payment, contacts, privacy}` |
 
 `from_price` = Σ минимальных цен по шагам (только активные карточки);
@@ -334,6 +341,18 @@ SQLite (WAL, `foreign_keys=ON`), SQLAlchemy 2.x, Alembic. Все даты — UT
 **Ручной порядок**: `POST /admin/orders/{id}/move {direction: "up"|"down"}`
 меняет `queue_order` с соседним активным заказом (409, если соседа нет или
 заказ не `new`). Новый заказ — в конец очереди.
+
+### Резерв
+| Метод | Путь | Назначение |
+|---|---|---|
+| POST | `/products/{id}/reserve` | Записаться в резерв; только для закончившегося видимого товара; повторная заявка не дублируется |
+| DELETE | `/products/{id}/reserve` | Отменить свою заявку |
+| GET | `/admin/reserve` | Заявки: `{items:[{id,product_id,product_title,stock,ordered_count,sold_out,available,user_id,buyer_name,created_at}], summary:{waiting,products,ready}}` |
+| DELETE | `/admin/reserve/{id}` | Убрать заявку |
+
+`available` = товар активен и место есть; `ready` — число ожидающих, с которыми
+можно связаться. Бейдж вкладки «Резерв»: красный `ready`, если место есть;
+серый `waiting`, если люди ждут, но места пока нет.
 
 ### Админка
 | Метод | Путь | Назначение |
@@ -415,6 +434,7 @@ frontend/src/
   pages/admin/ProductEdit.tsx      # товар, видео, «до анонса», шаги, карточки
   pages/admin/OrdersTab.tsx        # плашка отмен, фильтры, список
   pages/admin/OrderDetail.tsx
+  pages/admin/ReserveTab.tsx       # резерв: ожидающие, сигнал «Освободилось место»
   pages/admin/PlayersTab.tsx       # доны: статус + donor_exempt
   pages/admin/TextsTab.tsx
   pages/admin/LogsTab.tsx
@@ -424,7 +444,7 @@ frontend/src/
 ### Роуты
 `/` каталог · `/product/:id?step=N` конфигуратор · `/product/:id/review` заказ ·
 `/orders` мои заказы · `/orders/:id` заказ и отмена · `/order/:id/success` успех ·
-`/info` · `/admin/*` (только admin).
+`/info` · `/admin/*` (только admin), в т.ч. `/admin/reserve` — резерв.
 
 ### Конфигуратор — поведение
 - Состояние выбора живёт в `useState` внутри `Product.tsx`

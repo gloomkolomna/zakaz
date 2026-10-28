@@ -18,6 +18,8 @@ export default function Product() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reserving, setReserving] = useState(false);
+  const [reserveError, setReserveError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +56,28 @@ export default function Product() {
     navigate(`/product/${productId}/build`);
   }
 
+  function setReserved(reserved: boolean) {
+    setProduct((current) => (current ? { ...current, reserved } : current));
+  }
+
+  function reserve() {
+    if (!product || reserving) return;
+    setReserving(true);
+    setReserveError(null);
+    api.reserve(product.id)
+      .then(() => setReserved(true))
+      .catch((e) => setReserveError(e?.response?.data?.detail || 'Не удалось записаться. Попробуйте ещё раз.'))
+      .finally(() => setReserving(false));
+  }
+
+  function cancelReserve() {
+    if (!product) return;
+    setReserveError(null);
+    api.cancelReserve(product.id)
+      .then(() => setReserved(false))
+      .catch((e) => setReserveError(e?.response?.data?.detail || 'Не удалось отменить заявку.'));
+  }
+
   const hasSteps = product.steps.length > 0;
 
   return (
@@ -88,10 +112,25 @@ export default function Product() {
             </div>
           ) : product.sold_out ? (
             <div className="blocked-cta">
-              <button className="btn block" type="button" disabled>
-                Собрать заказ
-              </button>
-              <div className="blocked-note">Товар закончился.</div>
+              {product.reserved ? (
+                <>
+                  <button className="btn block" type="button" disabled>
+                    Вы в резерве
+                  </button>
+                  <div className="blocked-note">Сообщим, когда товар появится.</div>
+                  <button className="text-link reserve-cancel" type="button" onClick={cancelReserve}>
+                    Отменить заявку
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="btn block" type="button" onClick={reserve} disabled={reserving}>
+                    {reserving ? 'Записываю…' : 'Сообщить, когда появится'}
+                  </button>
+                  <div className="blocked-note">Товар закончился. Сообщим, когда появится.</div>
+                </>
+              )}
+              {reserveError && <div className="error-text">{reserveError}</div>}
             </div>
           ) : product.can_order ? (
             <div className="blocked-cta">

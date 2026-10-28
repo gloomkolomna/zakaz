@@ -1496,6 +1496,10 @@ a.brand:active {
   font-size: 13px;
 }
 
+.reserve-cancel {
+  margin-top: 8px;
+}
+
 .page-builder .bar,
 .page-review .bar {
   margin-top: 28px;
@@ -1574,6 +1578,22 @@ a.brand:active {
   border-radius: 9px;
   background: var(--red);
   color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.admin-tab-wait {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--line-soft);
+  color: var(--ink-2);
   font-size: 11px;
   line-height: 1;
   vertical-align: middle;
@@ -1686,6 +1706,34 @@ a.brand:active {
   min-height: 36px;
   padding: 0 12px;
   font-size: 13px;
+}
+
+.reserve-people {
+  display: grid;
+  gap: 8px;
+}
+
+.reserve-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.reserve-person:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.reserve-person-main {
+  min-width: 0;
+}
+
+.reserve-count {
+  white-space: nowrap;
 }
 
 .icon-action {

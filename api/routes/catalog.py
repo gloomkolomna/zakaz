@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from db import get_db
 from deps import get_current_user
 from models import Product, Section, User
-from services.catalog import filled_steps, from_price_map
+from services.catalog import filled_steps, from_price_map, visible_product
 from services.early import can_order, is_early
+from services.reserve import has_reservation
 from services.stock import is_sold_out, ordered_map
 from services.texts import get_catalog_texts, get_texts
 
@@ -70,8 +71,8 @@ def product_detail(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    product = db.query(Product).filter(Product.id == product_id).first()
-    if product is None or not product.is_active or not product.section.is_active:
+    product = visible_product(db, product_id)
+    if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар недоступен")
 
     steps = filled_steps(product)
@@ -87,6 +88,7 @@ def product_detail(
         "from_price": prices.get(product.id) if steps else None,
         "stock": int(product.stock or 0),
         "sold_out": is_sold_out(product, ordered),
+        "reserved": has_reservation(db, product.id, user.vk_id),
         "video": {
             "url": product.video_url,
             "file_url": product.video_file_url,

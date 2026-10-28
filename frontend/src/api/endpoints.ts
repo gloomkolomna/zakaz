@@ -75,6 +75,7 @@ export interface ProductDetail {
   from_price: number | null;
   stock: number;
   sold_out: boolean;
+  reserved: boolean;
   video: Video | null;
   early_until: string | null;
   is_early: boolean;
@@ -183,6 +184,30 @@ export interface AdminProduct {
   steps?: AdminStep[];
 }
 
+export interface AdminReserveItem {
+  id: number;
+  product_id: number;
+  product_title: string;
+  product_image_url: string | null;
+  product_is_active: boolean;
+  stock: number;
+  ordered_count: number;
+  sold_out: boolean;
+  available: boolean;
+  user_id: number;
+  buyer_name: string;
+  created_at: string | null;
+}
+
+export interface AdminReserveResponse {
+  items: AdminReserveItem[];
+  summary: {
+    waiting: number;
+    products: number;
+    ready: number;
+  };
+}
+
 export interface AdminOrdersSummary {
   count: number;
   queue: number;
@@ -277,6 +302,10 @@ export const api = {
 
   createOrder: (productId: number, items: { card_id: number; qty: number }[]) =>
     client.post<OrderDetail>('/orders', { product_id: productId, items }).then((res) => res.data),
+  reserve: (productId: number) =>
+    client.post<{ reserved: boolean; created_at: string }>(`/products/${productId}/reserve`).then((res) => res.data),
+  cancelReserve: (productId: number) =>
+    client.delete<{ reserved: boolean }>(`/products/${productId}/reserve`).then((res) => res.data),
   myOrders: () => client.get<{ items: OrderBrief[] }>('/me/orders').then((res) => res.data),
   order: (id: number) => client.get<OrderDetail>(`/orders/${id}`).then((res) => res.data),
   cancelOrder: (id: number) => client.post<OrderDetail>(`/orders/${id}/cancel`).then((res) => res.data),
@@ -350,6 +379,11 @@ export const api = {
     client.post(`/admin/orders/${id}/move`, { direction }).then((res) => res.data),
   adminCancelSeen: (id: number) =>
     client.post<OrderDetail>(`/admin/orders/${id}/cancel-seen`).then((res) => res.data),
+
+  adminReserve: () =>
+    client.get<AdminReserveResponse>('/admin/reserve').then((res) => res.data),
+  adminRemoveReserve: (id: number) =>
+    client.delete(`/admin/reserve/${id}`).then((res) => res.data),
 
   adminTexts: () => client.get<AdminTexts>('/admin/texts').then((res) => res.data),
   adminSaveTexts: (data: AdminTexts) =>

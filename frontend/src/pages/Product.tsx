@@ -115,10 +115,8 @@ export default function Product() {
   return (
     <main className="page">
       <BackLink to="/">Каталог</BackLink>
-      <div className={`page-product${isSingle ? ' is-single' : ''}`}>
-        <ProductImage src={product.image_url} alt={product.title} className="hero" />
+      <div className="page-product">
         <div className="product-head">
-          <div className="legend-title">{product.section_title}</div>
           <h1>
             {product.title}
             {product.sold_out && <span className="sold-out-note"> (товар закончился)</span>}
@@ -131,7 +129,13 @@ export default function Product() {
             {isSingle && price != null && <span className="price-note">· за 1 шт.</span>}
             {!isSingle && hasSteps && <span className="price-note">· собирается по шагам</span>}
           </div>
-          {product.description && <p className="body-text">{product.description}</p>}
+          <div className="product-intro">
+            <div className="product-about">
+              <div className="legend-title">{product.section_title}</div>
+              {product.description && <p className="body-text">{product.description}</p>}
+            </div>
+            <ProductImage src={product.image_url} alt={product.title} className="product-cover" />
+          </div>
           <VideoBlock video={product.video} cover={product.image_url} />
           {isSingle && product.images.length > 0 && (
             <CardGallery title="Фотографии товара" images={product.images} />

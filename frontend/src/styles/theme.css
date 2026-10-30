@@ -255,18 +255,55 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
-.hero {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--sheet);
-  display: grid;
-  place-items: center;
+.page-product {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
-.hero svg { width: 100%; height: auto; display: block; }
+.product-head {
+  margin-top: 0;
+}
 
-.product-head { margin-top: 20px; }
+.product-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 24px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.product-about {
+  min-width: 0;
+}
+
+.product-cover {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  overflow: hidden;
+}
+
+.product-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 619px) {
+  .product-intro {
+    display: block;
+  }
+
+  .product-cover {
+    width: 200px;
+    max-width: 60%;
+    margin-top: 16px;
+  }
+}
 
 .price-row {
   display: flex;
@@ -1179,34 +1216,6 @@ h1 {
   h1 { font-size: 34px; }
   .products { grid-template-columns: repeat(3, 1fr); gap: 26px 20px; }
 
-  .page-product {
-    display: grid;
-    grid-template-columns: 1.05fr 1fr;
-    grid-template-areas: 'hero head' 'hero specs';
-    column-gap: 40px;
-    align-items: start;
-  }
-
-  .page-product.is-single {
-    display: block;
-    max-width: 640px;
-    margin: 0 auto;
-  }
-
-  .page-product.is-single .hero {
-    aspect-ratio: auto;
-    max-height: none;
-  }
-
-  .page-product.is-single .product-head {
-    margin-top: 20px;
-  }
-
-  .page-product .hero { grid-area: hero; align-self: start; aspect-ratio: 4 / 5; max-height: 560px; }
-  .page-product .hero svg { height: 100%; }
-  .page-product .product-head { grid-area: head; margin-top: 0; }
-  .page-product .specs { grid-area: specs; margin-top: 28px; }
-
   .page-orders .orders-list {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1415,7 +1424,6 @@ a.brand:active {
 .image-button img,
 .pick-media img,
 .legend-thumb img,
-.hero img,
 .thumb img {
   display: block;
   width: 100%;
@@ -1431,14 +1439,6 @@ a.brand:active {
   min-height: 120px;
   color: var(--line);
   background: var(--sheet);
-}
-
-.hero .image-placeholder {
-  min-height: 320px;
-}
-
-.hero {
-  max-height: 560px;
 }
 
 .review-legend .legend-step {
@@ -2334,10 +2334,6 @@ a.player-order:hover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.hero {
-  aspect-ratio: 4 / 5;
 }
 
 .admin-video-preview {

@@ -3,9 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, type ProductDetail } from '../api/endpoints';
 import { formatPrice } from '../api/money';
 import BackLink from '../components/BackLink';
+import CardGallery from '../components/CardGallery';
+import ConfirmDialog from '../components/ConfirmDialog';
 import EarlyBadge, { EarlyNote } from '../components/EarlyBadge';
 import ProductImage from '../components/ProductImage';
 import Skeleton from '../components/Skeleton';
+import Stepper from '../components/Stepper';
 import VideoBlock from '../components/VideoBlock';
 import { clearDraft } from '../api/draft';
 import { useSession } from '../context/SessionContext';
@@ -20,6 +23,10 @@ export default function Product() {
   const [error, setError] = useState<string | null>(null);
   const [reserving, setReserving] = useState(false);
   const [reserveError, setReserveError] = useState<string | null>(null);
+  const [qty, setQty] = useState(1);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +85,29 @@ export default function Product() {
       .catch((e) => setReserveError(e?.response?.data?.detail || 'Не удалось отменить заявку.'));
   }
 
+  function placeOrder() {
+    if (!product || submitting) return;
+    setConfirmOpen(false);
+    setSubmitting(true);
+    setOrderError(null);
+    api.createSingleOrder(product.id, qty)
+      .then((order) => navigate(`/order/${order.id}/success`))
+      .catch((e) => {
+        const detail = e?.response?.data?.detail;
+        setOrderError(
+          typeof detail === 'string'
+            ? detail
+            : detail?.message || 'Не удалось отправить заказ. Проверьте связь и попробуйте ещё раз.',
+        );
+      })
+      .finally(() => setSubmitting(false));
+  }
+
+  const isSingle = product.mode === 'single';
   const hasSteps = product.steps.length > 0;
+  const price = isSingle ? product.price : product.from_price;
+  const ready = isSingle ? price != null : hasSteps;
+  const total = price == null ? null : price * qty;
 
   return (
     <main className="page">
@@ -94,21 +123,27 @@ export default function Product() {
           </h1>
           <div className="price-row">
             <span className="price">
-              {product.from_price == null ? 'Скоро' : `от ${formatPrice(product.from_price)}`}
+              {price == null ? 'Скоро' : isSingle ? formatPrice(price) : `от ${formatPrice(price)}`}
             </span>
-            {hasSteps && <span className="price-note">· собирается по шагам</span>}
+            {isSingle && price != null && <span className="price-note">· за 1 шт.</span>}
+            {!isSingle && hasSteps && <span className="price-note">· собирается по шагам</span>}
           </div>
           {product.description && <p className="body-text">{product.description}</p>}
           <VideoBlock video={product.video} cover={product.image_url} />
+          {isSingle && product.images.length > 0 && (
+            <CardGallery title="Фотографии товара" images={product.images} />
+          )}
 
           {product.is_early && <EarlyNote until={product.early_until} />}
 
-          {!hasSteps ? (
+          {!ready ? (
             <div className="blocked-cta">
               <button className="btn block" type="button" disabled>
                 Скоро в продаже
               </button>
-              <div className="blocked-note">Товар ещё наполняется.</div>
+              <div className="blocked-note">
+                {isSingle ? 'Цена ещё не указана.' : 'Товар ещё наполняется.'}
+              </div>
             </div>
           ) : product.sold_out ? (
             <div className="blocked-cta">
@@ -134,15 +169,35 @@ export default function Product() {
             </div>
           ) : product.can_order ? (
             <div className="blocked-cta">
-              <button className="btn block" type="button" onClick={start}>
-                Собрать заказ
-              </button>
-              {product.is_early && <div className="blocked-note">До анонса — вам доступно.</div>}
+              {isSingle ? (
+                <>
+                  <div className="buy-line">
+                    <Stepper value={qty} max={99} onChange={setQty} />
+                    <button
+                      className="btn block"
+                      type="button"
+                      onClick={() => setConfirmOpen(true)}
+                      disabled={submitting}
+                    >
+                      {submitting ? 'Отправляю…' : `Заказать · ${formatPrice(total || 0)}`}
+                    </button>
+                  </div>
+                  {product.is_early && <div className="blocked-note">До анонса — вам доступно.</div>}
+                  {orderError && <div className="error-text">{orderError}</div>}
+                </>
+              ) : (
+                <>
+                  <button className="btn block" type="button" onClick={start}>
+                    Собрать заказ
+                  </button>
+                  {product.is_early && <div className="blocked-note">До анонса — вам доступно.</div>}
+                </>
+              )}
             </div>
           ) : (
             <div className="blocked-cta">
               <button className="btn block" type="button" disabled>
-                Собрать заказ
+                {isSingle ? 'Заказать' : 'Собрать заказ'}
               </button>
               <div className="blocked-note">
                 {product.early_reason === 'early_access'
@@ -161,6 +216,18 @@ export default function Product() {
           )}
         </div>
       </div>
+
+      {isSingle && (
+        <ConfirmDialog
+          open={confirmOpen}
+          title="Оформить заказ?"
+          text={`${product.title} · ${qty} шт. · ${formatPrice(total || 0)}`}
+          confirmLabel="Отправить заказ"
+          cancelLabel="Отмена"
+          onConfirm={placeOrder}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
     </main>
   );
 }

@@ -1598,6 +1598,23 @@ a.brand:active {
   font-size: 13px;
 }
 
+.buy-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.buy-line .stepper {
+  margin: 0;
+  flex: none;
+}
+
+.buy-line .btn.block {
+  flex: 1;
+  width: auto;
+  margin-left: 0;
+}
+
 .reserve-cancel {
   margin-top: 8px;
 }

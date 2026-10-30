@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api, type AdminSection } from '../../api/endpoints';
+import { api, type AdminSection, type ProductMode } from '../../api/endpoints';
 import BackLink from '../../components/BackLink';
 import Skeleton from '../../components/Skeleton';
 
@@ -14,6 +14,8 @@ export default function ProductCreate() {
   );
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [mode, setMode] = useState<ProductMode>('build');
+  const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [sortOrder, setSortOrder] = useState('');
   const [active, setActive] = useState(false);
@@ -40,6 +42,11 @@ export default function ProductCreate() {
       setError('Кол-во копий не может быть отрицательным');
       return;
     }
+    const parsedPrice = price.trim() ? Number(price) : null;
+    if (mode === 'single' && (parsedPrice === null || !Number.isFinite(parsedPrice) || parsedPrice < 0)) {
+      setError('Укажите цену одиночного товара');
+      return;
+    }
     setSaving(true);
     setError(null);
     const order = sortOrder.trim() ? Number(sortOrder) : undefined;
@@ -47,6 +54,8 @@ export default function ProductCreate() {
       section_id: sectionId,
       title: title.trim(),
       description: description.trim() || undefined,
+      mode,
+      ...(mode === 'single' && parsedPrice !== null ? { price: parsedPrice } : {}),
       stock: parsedStock,
       sort_order: order !== undefined && Number.isFinite(order) ? order : undefined,
       is_active: active,
@@ -82,8 +91,9 @@ export default function ProductCreate() {
       <BackLink to="/admin/products">К товарам</BackLink>
       <h2 className="section-title">Новый товар</h2>
       <p className="admin-muted">
-        Выберите раздел и заполните основное. Шаги, карточки, фото и видео
-        добавите на следующем экране.
+        Выберите раздел и заполните основное. Для сборного товара шаги, карточки,
+        фото и видео добавите на следующем экране. Одиночному товару нужны
+        главное фото, карусель и цена.
       </p>
 
       <form className="admin-form" onSubmit={submit}>
@@ -125,6 +135,34 @@ export default function ProductCreate() {
         </div>
 
         <div className="field">
+          <label htmlFor="create-mode">Тип товара</label>
+          <select id="create-mode" value={mode} onChange={(event) => setMode(event.target.value as ProductMode)}>
+            <option value="build">Сборный — шаги и карточки</option>
+            <option value="single">Одиночный — готовая цена</option>
+          </select>
+          <div className="admin-muted">
+            {mode === 'single'
+              ? 'Без сборки: покупатель выбирает количество и сразу заказывает.'
+              : 'Покупатель собирает заказ по шагам из карточек с ценами.'}
+          </div>
+        </div>
+
+        {mode === 'single' && (
+          <div className="field">
+            <label htmlFor="create-price">Цена, ₽</label>
+            <input
+              id="create-price"
+              type="number"
+              min={0}
+              value={price}
+              onChange={(event) => setPrice(event.target.value)}
+              placeholder="Например, 1250"
+              required
+            />
+          </div>
+        )}
+
+        <div className="field">
           <label htmlFor="create-stock">Кол-во копий</label>
           <input
             id="create-stock"
@@ -156,7 +194,7 @@ export default function ProductCreate() {
         {error && <div className="error-text">{error}</div>}
 
         <div className="admin-actions">
-          <button className="btn" type="submit" disabled={saving || !title.trim() || sectionId === ''}>
+          <button className="btn" type="submit" disabled={saving || !title.trim() || sectionId === '' || (mode === 'single' && !price.trim())}>
             {saving ? 'Создаю…' : 'Создать товар'}
           </button>
           <button className="btn secondary" type="button" onClick={() => navigate('/admin/products')}>

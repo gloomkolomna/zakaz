@@ -6,6 +6,8 @@ import {
   type AdminProduct,
   type AdminSection,
   type AdminStep,
+  type CardImage,
+  type ProductMode,
 } from '../../api/endpoints';
 import { formatEarlyUntil, formatPrice } from '../../api/money';
 import { mediaUrl } from '../../api/media';
@@ -17,12 +19,15 @@ interface ProductForm {
   section_id: number;
   title: string;
   description: string;
+  mode: ProductMode;
+  price: number;
   stock: number;
   sort_order: number;
   is_active: boolean;
 }
 
 const MAX_CARD_IMAGES = 10;
+const MAX_PRODUCT_IMAGES = 10;
 
 export default function ProductEdit() {
   const { id } = useParams();
@@ -46,6 +51,8 @@ export default function ProductEdit() {
           section_id: data.section_id,
           title: data.title,
           description: data.description || '',
+          mode: data.mode,
+          price: data.price ?? 0,
           stock: data.stock,
           sort_order: data.sort_order,
           is_active: data.is_active,
@@ -73,8 +80,25 @@ export default function ProductEdit() {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   }
 
+  async function changeMode(next: ProductMode) {
+    if (!form || next === form.mode) return;
+    if (next === 'single' && (product?.steps?.length || 0) > 0) {
+      const ok = await confirm({
+        title: 'Переключить в одиночный режим?',
+        text: 'Шаги и карточки сохранятся, но покупатель будет заказывать товар целиком по одной цене. Вернуться в сборный режим можно в любой момент.',
+        confirmLabel: 'Переключить',
+      });
+      if (!ok) return;
+    }
+    update('mode', next);
+  }
+
   function save() {
     if (!form) return;
+    if (form.mode === 'single' && (!Number.isFinite(form.price) || form.price < 0)) {
+      setError('Укажите цену одиночного товара');
+      return;
+    }
     setSaving(true);
     api.adminUpdateProduct(productId, form)
       .then(() => {
@@ -189,6 +213,32 @@ export default function ProductEdit() {
         </div>
         <div className="form-grid two">
           <div className="field">
+            <label htmlFor="edit-mode">Тип товара</label>
+            <select id="edit-mode" value={form.mode} onChange={(event) => void changeMode(event.target.value as ProductMode)}>
+              <option value="build">Сборный — шаги и карточки</option>
+              <option value="single">Одиночный — готовая цена</option>
+            </select>
+            <div className="admin-muted">
+              {form.mode === 'single'
+                ? 'Без шагов: главное фото, карусель, цена и количество.'
+                : 'Покупатель собирает заказ по шагам из карточек.'}
+            </div>
+          </div>
+          {form.mode === 'single' && (
+            <div className="field">
+              <label htmlFor="edit-price">Цена, ₽</label>
+              <input
+                id="edit-price"
+                type="number"
+                min={0}
+                value={form.price}
+                onChange={(event) => update('price', Number(event.target.value) || 0)}
+              />
+            </div>
+          )}
+        </div>
+        <div className="form-grid two">
+          <div className="field">
             <label htmlFor="edit-sort">Порядок</label>
             <input id="edit-sort" type="number" value={form.sort_order} onChange={(event) => update('sort_order', Number(event.target.value))} />
           </div>
@@ -224,13 +274,13 @@ export default function ProductEdit() {
       </div>
 
       <div className="admin-form">
-        <h3 className="section-title">Обложка</h3>
+        <h3 className="section-title">{form.mode === 'single' ? 'Главное фото' : 'Обложка'}</h3>
         <div className="admin-card-row">
           <div className="thumb">
             {product.image_url ? <img src={mediaUrl(product.image_url)} alt={product.title} /> : null}
           </div>
           <div className="admin-card-info">
-            <div>{product.image_url ? 'Обложка загружена' : 'Обложки нет'}</div>
+            <div>{product.image_url ? 'Главное фото загружено' : 'Главного фото нет'}</div>
             <div className="admin-card-meta">JPG, PNG или HEIC, до 10 МБ</div>
           </div>
           <div className="admin-actions">
@@ -246,6 +296,15 @@ export default function ProductEdit() {
           </div>
         </div>
       </div>
+
+      {form.mode === 'single' && (
+        <ProductGalleryEditor
+          productId={productId}
+          images={product.images}
+          onChanged={load}
+          onError={setError}
+        />
+      )}
 
       <div className="admin-form">
         <h3 className="section-title">Видеообзор</h3>
@@ -300,7 +359,8 @@ export default function ProductEdit() {
         </div>
       </div>
 
-      <div className="steps-editor">
+      {form.mode === 'build' ? (
+        <div className="steps-editor">
         <h3 className="section-title">Шаги и карточки</h3>
         {steps.map((step, index) => (
           <StepEditor
@@ -339,6 +399,15 @@ export default function ProductEdit() {
           </div>
         </div>
       </div>
+      ) : (
+        <div className="admin-form">
+          <h3 className="section-title">Шаги и карточки</h3>
+          <p className="admin-muted">
+            Одиночный товар продаётся целиком: шаги и карточки не используются.
+            При возврате в сборный режим они снова станут доступны.
+          </p>
+        </div>
+      )}
 
       <div className="admin-form">
         <h3 className="section-title">Удаление товара</h3>
@@ -666,6 +735,106 @@ function CardRow({
           <button className="btn secondary" type="button" onClick={save}>Сохранить</button>
         </div>
       </details>
+    </div>
+  );
+}
+
+function ProductGalleryEditor({
+  productId,
+  images,
+  onChanged,
+  onError,
+}: {
+  productId: number;
+  images: CardImage[];
+  onChanged: () => void;
+  onError: (message: string) => void;
+}) {
+  const confirm = useConfirm();
+  const [uploading, setUploading] = useState(false);
+
+  async function uploadImages(files: File[]) {
+    if (files.length === 0 || uploading) return;
+    const remaining = MAX_PRODUCT_IMAGES - images.length;
+    if (files.length > remaining) {
+      onError(`Можно добавить ещё ${remaining} фото`);
+      return;
+    }
+    setUploading(true);
+    for (const file of files) {
+      try {
+        await api.adminAddProductImage(productId, file);
+      } catch (error) {
+        const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+        onError(detail || 'Не удалось загрузить фото');
+        break;
+      }
+    }
+    setUploading(false);
+    onChanged();
+  }
+
+  async function removeImage(image: CardImage) {
+    const ok = await confirm({
+      title: 'Удалить фото?',
+      text: 'Фото будет удалено из карусели товара.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
+    api.adminDeleteProductGalleryImage(productId, image.id)
+      .then(onChanged)
+      .catch((e) => onError(e?.response?.data?.detail || 'Не удалось удалить фото'));
+  }
+
+  function moveImage(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= images.length) return;
+    const ids = images.map((image) => image.id);
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    api.adminReorderProductImages(productId, ids)
+      .then(onChanged)
+      .catch((e) => onError(e?.response?.data?.detail || 'Не удалось изменить порядок фото'));
+  }
+
+  return (
+    <div className="admin-form">
+      <h3 className="section-title">Карусель</h3>
+      <p className="admin-muted">
+        Дополнительные фото на странице товара. Первое фото — обложка карусели.
+      </p>
+      <div className="admin-card-gallery">
+        {images.map((image, index) => (
+          <div className="admin-card-image" key={image.id}>
+            <div className="admin-card-image-media">
+              <img src={mediaUrl(image.url)} alt="" />
+              {index === 0 && <span className="admin-card-cover">Обложка</span>}
+            </div>
+            <div className="admin-actions">
+              <button className="icon-action" type="button" onClick={() => moveImage(index, -1)} disabled={index === 0} aria-label="Фото выше">↑</button>
+              <button className="icon-action" type="button" onClick={() => moveImage(index, 1)} disabled={index === images.length - 1} aria-label="Фото ниже">↓</button>
+              <button className="icon-action red" type="button" onClick={() => void removeImage(image)} aria-label="Удалить фото">×</button>
+            </div>
+          </div>
+        ))}
+        {images.length < MAX_PRODUCT_IMAGES && (
+          <label className="admin-card-add">
+            <span>{uploading ? 'Загружаю…' : '+ Фото'}</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(event) => {
+                const files = Array.from(event.target.files || []);
+                event.target.value = '';
+                void uploadImages(files);
+              }}
+            />
+          </label>
+        )}
+      </div>
+      <div className="admin-muted">{images.length} из {MAX_PRODUCT_IMAGES} · первое фото — обложка карусели</div>
     </div>
   );
 }

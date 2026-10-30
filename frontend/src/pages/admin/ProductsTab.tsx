@@ -130,10 +130,18 @@ export default function ProductsTab() {
                     {product.sold_out && <span className="pill-cancel">Закончился</span>}
                     {product.is_early && <EarlyBadge until={product.early_until} />}
                   </div>
-                  <span className="admin-muted">{formatPrice(product.from_price)}</span>
+                  <span className="admin-muted">
+                    {product.mode === 'single'
+                      ? formatPrice(product.price)
+                      : `от ${formatPrice(product.from_price)}`}
+                  </span>
                 </div>
                 <div className="admin-muted">
-                  {product.section_title} · {product.steps_count ?? product.steps?.length ?? 0} шаг. ·{' '}
+                  {product.section_title} ·{' '}
+                  {product.mode === 'single'
+                    ? 'одиночный товар'
+                    : `${product.steps_count ?? product.steps?.length ?? 0} шаг.`}{' '}
+                  ·{' '}
                   {product.stock > 0 ? `копий: ${product.ordered_count} из ${product.stock}` : 'копий без ограничения'} ·{' '}
                   {product.image_url ? 'обложка есть' : 'без обложки'}
                 </div>

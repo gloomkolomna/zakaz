@@ -27,7 +27,8 @@ class ItemIn(BaseModel):
 
 class OrderIn(BaseModel):
     product_id: int
-    items: list[ItemIn]
+    items: list[ItemIn] = []
+    qty: int | None = None
 
 
 def _bad(message: str):
@@ -96,6 +97,13 @@ def create_order(data: OrderIn, db: Session = Depends(get_db), user: User = Depe
 
     _check_rate_limit(db, user)
 
+    if product.mode == "single":
+        return _single_order(db, user, product, data)
+
+    return _build_order(db, user, product, data)
+
+
+def _build_order(db: Session, user: User, product: Product, data: OrderIn) -> dict:
     if not 1 <= len(data.items) <= 100:
         _bad("В заказе должно быть от 1 до 100 позиций")
 
@@ -159,7 +167,34 @@ def create_order(data: OrderIn, db: Session = Depends(get_db), user: User = Depe
                 sum=line_sum,
             )
         )
+    return _place_order(db, user, product, items, total)
 
+
+def _single_order(db: Session, user: User, product: Product, data: OrderIn) -> dict:
+    if data.items:
+        _bad("Для одиночного товара состав не передаётся")
+    if product.price is None:
+        _bad("У товара не указана цена")
+    qty = data.qty if data.qty is not None else 0
+    if not 1 <= qty <= 99:
+        _bad("Количество: от 1 до 99")
+    price = int(product.price)
+    total = price * qty
+    item = OrderItem(
+        card_id=None,
+        step_title="Товар",
+        card_title=product.title,
+        image_url=product.image_url,
+        price=price,
+        qty=qty,
+        sum=total,
+    )
+    return _place_order(db, user, product, [item], total)
+
+
+def _place_order(
+    db: Session, user: User, product: Product, items: list[OrderItem], total: int
+) -> dict:
     order = Order(
         user_id=user.vk_id,
         buyer_name=user.display_name or f"Покупатель {user.vk_id}",

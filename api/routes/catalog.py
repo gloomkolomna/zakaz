@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 from deps import get_current_user
 from models import Product, Section, StepCard, User
-from services.catalog import filled_steps, from_price_map, visible_product
+from services.catalog import from_price_map, visible_product, visible_steps
 from services.early import can_order, is_early
 from services.reserve import has_reservation
 from services.stock import is_sold_out, ordered_map
@@ -16,18 +16,26 @@ router = APIRouter(prefix="/api", tags=["catalog"])
 
 
 def _product_brief(product: Product, prices: dict[int, int | None], ordered: int) -> dict:
-    steps = filled_steps(product)
+    steps = visible_steps(product)
     return {
         "id": product.id,
         "title": product.title,
+        "mode": product.mode,
         "image_url": product.image_url,
-        "from_price": prices.get(product.id) if steps else None,
+        "from_price": prices.get(product.id),
         "steps_count": len(steps),
         "stock": int(product.stock or 0),
         "sold_out": is_sold_out(product, ordered),
         "is_early": is_early(product),
         "early_until": product.early_until.isoformat() if product.early_until else None,
     }
+
+
+def _images_payload(images) -> list[dict]:
+    return [
+        {"id": image.id, "url": image.image_url, "sort_order": image.sort_order}
+        for image in sorted(images, key=lambda row: (row.sort_order, row.id))
+    ]
 
 
 def _card_payload(card: StepCard) -> dict:
@@ -91,7 +99,7 @@ def product_detail(
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар недоступен")
 
-    steps = filled_steps(product)
+    steps = visible_steps(product)
     prices = from_price_map(db, [product.id])
     ordered = ordered_map(db, [product.id]).get(product.id, 0)
     allowed, reason = can_order(db, user, product)
@@ -99,9 +107,12 @@ def product_detail(
         "id": product.id,
         "title": product.title,
         "description": product.description,
+        "mode": product.mode,
+        "price": product.price,
         "image_url": product.image_url,
+        "images": _images_payload(product.images),
         "section_title": product.section.title,
-        "from_price": prices.get(product.id) if steps else None,
+        "from_price": prices.get(product.id),
         "stock": int(product.stock or 0),
         "sold_out": is_sold_out(product, ordered),
         "reserved": has_reservation(db, product.id, user.vk_id),

@@ -61,6 +61,8 @@ class Product(Base):
     )
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
+    mode = Column(String, nullable=False, default="build", server_default="build")
+    price = Column(Integer, nullable=True)
     image_url = Column(String, nullable=True)
     video_url = Column(String, nullable=True)
     video_file_url = Column(String, nullable=True)
@@ -72,6 +74,12 @@ class Product(Base):
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
     section = relationship("Section", back_populates="products")
+    images = relationship(
+        "ProductImage",
+        back_populates="product",
+        order_by="ProductImage.sort_order",
+        cascade="all, delete-orphan",
+    )
     steps = relationship(
         "ProductStep",
         back_populates="product",
@@ -82,6 +90,24 @@ class Product(Base):
     __table_args__ = (
         Index("ix_products_section_sort", "section_id", "sort_order"),
         Index("ix_products_early_until", "early_until"),
+    )
+
+
+class ProductImage(Base):
+    __tablename__ = "product_images"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(
+        Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )
+    image_url = Column(String, nullable=False)
+    sort_order = Column(Integer, nullable=False, default=0, server_default="0")
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+
+    product = relationship("Product", back_populates="images")
+
+    __table_args__ = (
+        Index("ix_product_images_product_sort", "product_id", "sort_order"),
     )
 
 

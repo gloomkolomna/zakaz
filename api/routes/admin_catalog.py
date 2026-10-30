@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 from deps import require_role
-from models import Order, OrderItem, Product, ProductStep, Section, StepCard, StepCardImage, User, utcnow
+from models import Order, OrderItem, Product, ProductImage, ProductStep, Section, StepCard, StepCardImage, User, utcnow
 from services.catalog import filled_steps, from_price_map
 from services.early import is_early
 from services.stock import is_sold_out, ordered_map
@@ -18,6 +18,8 @@ from services.uploads import remove_upload, save_image, save_video
 router = APIRouter(prefix="/api/admin", tags=["admin-catalog"])
 
 MAX_CARD_IMAGES = 10
+MAX_PRODUCT_IMAGES = 10
+MODES = ("build", "single")
 
 
 def _title(value: str) -> str:
@@ -44,6 +46,22 @@ def _stock(value: int | None) -> int | None:
         return None
     if value < 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Кол-во копий не может быть отрицательным")
+    return value
+
+
+def _mode(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if value not in MODES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Режим: build или single")
+    return value
+
+
+def _price(value: int | None) -> int | None:
+    if value is None:
+        return None
+    if value < 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Цена не может быть отрицательной")
     return value
 
 
@@ -106,6 +124,13 @@ def _card_images(card: StepCard) -> list[dict]:
     ]
 
 
+def _product_images(product: Product) -> list[dict]:
+    return [
+        {"id": image.id, "url": image.image_url, "sort_order": image.sort_order}
+        for image in sorted(product.images, key=lambda row: (row.sort_order, row.id))
+    ]
+
+
 def _card_out(card: StepCard) -> dict:
     images = _card_images(card)
     return {
@@ -130,7 +155,10 @@ def _admin_product(product: Product, db: Session) -> dict:
         "section_id": product.section_id,
         "title": product.title,
         "description": product.description,
+        "mode": product.mode,
+        "price": product.price,
         "image_url": product.image_url,
+        "images": _product_images(product),
         "video": _video(product),
         "video_url": product.video_url,
         "video_file_url": product.video_file_url,
@@ -173,6 +201,8 @@ class ProductIn(BaseModel):
     section_id: int | None = None
     title: str | None = None
     description: str | None = None
+    mode: str | None = None
+    price: int | None = None
     stock: int | None = None
     sort_order: int | None = None
     is_active: bool | None = None
@@ -224,6 +254,10 @@ class CardImagesReorderIn(BaseModel):
     ids: list[int]
 
 
+class ProductImagesReorderIn(BaseModel):
+    ids: list[int]
+
+
 class StepReorderIn(BaseModel):
     product_id: int
     ids: list[int]
@@ -265,6 +299,8 @@ def _remove_product_files(product: Product) -> None:
     remove_upload(product.image_url)
     remove_upload(product.video_file_url)
     remove_upload(product.video_poster_url)
+    for image in product.images:
+        remove_upload(image.image_url)
     for step in product.steps:
         for card in step.cards:
             for image in card.images:
@@ -384,6 +420,8 @@ def list_products(
             "section_title": row.section.title if row.section else "",
             "title": row.title,
             "description": row.description,
+            "mode": row.mode,
+            "price": row.price,
             "image_url": row.image_url,
             "video": _video(row),
             "early_until": row.early_until.isoformat() if row.early_until else None,
@@ -393,7 +431,7 @@ def list_products(
             "sold_out": is_sold_out(row, ordered.get(row.id, 0)),
             "sort_order": row.sort_order,
             "is_active": bool(row.is_active),
-            "steps_count": len(filled_steps(row)),
+            "steps_count": 0 if row.mode == "single" else len(filled_steps(row)),
             "from_price": prices.get(row.id),
         }
         for row in rows
@@ -405,10 +443,16 @@ def create_product(data: ProductIn, db: Session = Depends(get_db), user: User = 
     if data.section_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Выберите раздел")
     section = _section(db, data.section_id)
+    mode = _mode(data.mode) or "build"
+    price = _price(data.price)
+    if mode == "single" and price is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Укажите цену одиночного товара")
     row = Product(
         section_id=section.id,
         title=_title(data.title or ""),
         description=data.description,
+        mode=mode,
+        price=price,
         stock=_stock(data.stock) or 0,
         sort_order=data.sort_order if data.sort_order is not None else _next_product_order(db, section.id),
         is_active=False if data.is_active is None else data.is_active,
@@ -427,12 +471,18 @@ def get_product(product_id: int, db: Session = Depends(get_db), user: User = Dep
 @router.put("/products/{product_id}")
 def update_product(product_id: int, data: ProductIn, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     row = _product(db, product_id)
+    mode = _mode(data.mode) or row.mode
+    price = _price(data.price) if data.price is not None else row.price
+    if mode == "single" and price is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Укажите цену одиночного товара")
     if data.title is not None:
         row.title = _title(data.title)
     if data.description is not None:
         row.description = data.description
     if data.section_id is not None:
         row.section_id = _section(db, data.section_id).id
+    row.mode = mode
+    row.price = price
     stock = _stock(data.stock)
     if stock is not None:
         row.stock = stock
@@ -477,6 +527,83 @@ def delete_product_image(product_id: int, db: Session = Depends(get_db), user: U
     row = _product(db, product_id)
     remove_upload(row.image_url)
     row.image_url = None
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/products/{product_id}/images")
+def upload_product_gallery_image(
+    product_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    row = _product(db, product_id)
+    if len(row.images) >= MAX_PRODUCT_IMAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"У товара может быть не больше {MAX_PRODUCT_IMAGES} фото",
+        )
+    url = save_image(file, "product", 1400)
+    next_order = max((image.sort_order for image in row.images), default=-1) + 1
+    image = ProductImage(product_id=row.id, image_url=url, sort_order=next_order)
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+    return {"id": image.id, "url": image.image_url, "sort_order": image.sort_order}
+
+
+@router.delete("/products/{product_id}/images/{image_id}")
+def delete_product_gallery_image(
+    product_id: int,
+    image_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    row = _product(db, product_id)
+    image = (
+        db.query(ProductImage)
+        .filter(ProductImage.id == image_id, ProductImage.product_id == row.id)
+        .first()
+    )
+    if image is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Фото не найдено")
+    remove_upload(image.image_url)
+    db.delete(image)
+    db.commit()
+    remaining = (
+        db.query(ProductImage)
+        .filter(ProductImage.product_id == row.id)
+        .order_by(ProductImage.sort_order, ProductImage.id)
+        .all()
+    )
+    for index, item in enumerate(remaining):
+        item.sort_order = index
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/products/{product_id}/images/reorder")
+def reorder_product_gallery_images(
+    product_id: int,
+    data: ProductImagesReorderIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    row = _product(db, product_id)
+    if not data.ids or len(set(data.ids)) != len(data.ids):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Некорректный список фото")
+    images = (
+        db.query(ProductImage)
+        .filter(ProductImage.product_id == row.id, ProductImage.id.in_(data.ids))
+        .all()
+    )
+    total = db.query(ProductImage).filter(ProductImage.product_id == row.id).count()
+    if len(images) != len(data.ids) or total != len(data.ids):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Нужно передать все фото товара")
+    by_id = {image.id: image for image in images}
+    for index, image_id in enumerate(data.ids):
+        by_id[image_id].sort_order = index
     db.commit()
     return {"ok": True}
 

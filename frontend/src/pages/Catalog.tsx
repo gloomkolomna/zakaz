@@ -77,9 +77,13 @@ export default function Catalog() {
                     {product.is_early && <EarlyBadge until={product.early_until} />}
                   </div>
                   <div className="product-meta">
-                    {product.steps_count === 0 || product.from_price == null
+                    {product.from_price == null
                       ? 'Скоро'
-                      : `от ${formatPrice(product.from_price)}`}
+                      : product.mode === 'single'
+                        ? formatPrice(product.from_price)
+                        : product.steps_count === 0
+                          ? 'Скоро'
+                          : `от ${formatPrice(product.from_price)}`}
                   </div>
                 </Link>
               ))}

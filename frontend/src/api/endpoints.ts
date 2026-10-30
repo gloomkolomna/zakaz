@@ -3,6 +3,7 @@ import type { SelectionMode, Selected } from './selection';
 
 export type Role = 'player' | 'admin';
 export type OrderStatus = 'new' | 'done' | 'cancelled';
+export type ProductMode = 'build' | 'single';
 
 export interface MeUser {
   vk_id: number;
@@ -27,6 +28,7 @@ export interface Video {
 export interface ProductBrief {
   id: number;
   title: string;
+  mode: ProductMode;
   image_url: string | null;
   from_price: number | null;
   steps_count: number;
@@ -77,7 +79,10 @@ export interface ProductDetail {
   id: number;
   title: string;
   description: string | null;
+  mode: ProductMode;
+  price: number | null;
   image_url: string | null;
+  images: CardImage[];
   section_title: string;
   from_price: number | null;
   stock: number;
@@ -175,7 +180,10 @@ export interface AdminProduct {
   section_title?: string;
   title: string;
   description: string | null;
+  mode: ProductMode;
+  price: number | null;
   image_url: string | null;
+  images: CardImage[];
   video: Video | null;
   video_url: string | null;
   video_file_url: string | null;
@@ -310,6 +318,8 @@ export const api = {
 
   createOrder: (productId: number, items: { card_id: number; qty: number }[]) =>
     client.post<OrderDetail>('/orders', { product_id: productId, items }).then((res) => res.data),
+  createSingleOrder: (productId: number, qty: number) =>
+    client.post<OrderDetail>('/orders', { product_id: productId, qty }).then((res) => res.data),
   reserve: (productId: number) =>
     client.post<{ reserved: boolean; created_at: string }>(`/products/${productId}/reserve`).then((res) => res.data),
   cancelReserve: (productId: number) =>
@@ -332,7 +342,7 @@ export const api = {
       .then((res) => res.data),
   adminProduct: (id: number) =>
     client.get<AdminProduct>(`/admin/products/${id}`).then((res) => res.data),
-  adminCreateProduct: (data: { section_id: number; title: string; description?: string; stock?: number; sort_order?: number; is_active?: boolean }) =>
+  adminCreateProduct: (data: { section_id: number; title: string; description?: string; mode?: ProductMode; price?: number; stock?: number; sort_order?: number; is_active?: boolean }) =>
     client.post<AdminProduct>('/admin/products', data).then((res) => res.data),
   adminUpdateProduct: (id: number, data: Partial<AdminProduct>) =>
     client.put<AdminProduct>(`/admin/products/${id}`, data).then((res) => res.data),
@@ -341,6 +351,11 @@ export const api = {
   adminUploadProductImage: (id: number, file: File) => upload(`/admin/products/${id}/image`, file),
   adminDeleteProductImage: (id: number) =>
     client.delete(`/admin/products/${id}/image`).then((res) => res.data),
+  adminAddProductImage: (id: number, file: File) => upload(`/admin/products/${id}/images`, file),
+  adminDeleteProductGalleryImage: (productId: number, imageId: number) =>
+    client.delete(`/admin/products/${productId}/images/${imageId}`).then((res) => res.data),
+  adminReorderProductImages: (productId: number, ids: number[]) =>
+    client.post(`/admin/products/${productId}/images/reorder`, { ids }).then((res) => res.data),
   adminUploadProductVideo: (id: number, file: File) => upload(`/admin/products/${id}/video`, file),
   adminSetVideoUrl: (id: number, url: string | null) =>
     client.put<{ url: string | null }>(`/admin/products/${id}/video-url`, { url }).then((res) => res.data),

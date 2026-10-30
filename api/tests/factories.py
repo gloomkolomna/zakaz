@@ -21,6 +21,8 @@ def make_product(
     is_active=True,
     early_until=None,
     stock=0,
+    mode="build",
+    price=None,
 ):
     row = Product(
         section_id=section.id,
@@ -30,6 +32,8 @@ def make_product(
         is_active=is_active,
         early_until=early_until,
         stock=stock,
+        mode=mode,
+        price=price,
     )
     db.add(row)
     db.commit()

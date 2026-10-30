@@ -4,9 +4,9 @@ import { api, type ProductDetail } from '../api/endpoints';
 import { formatPrice } from '../api/money';
 import BackLink from '../components/BackLink';
 import CardGallery from '../components/CardGallery';
-import ConfirmDialog from '../components/ConfirmDialog';
 import EarlyBadge, { EarlyNote } from '../components/EarlyBadge';
 import ProductImage from '../components/ProductImage';
+import Sheet from '../components/Sheet';
 import Skeleton from '../components/Skeleton';
 import Stepper from '../components/Stepper';
 import VideoBlock from '../components/VideoBlock';
@@ -24,7 +24,8 @@ export default function Product() {
   const [reserving, setReserving] = useState(false);
   const [reserveError, setReserveError] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
 
@@ -87,11 +88,13 @@ export default function Product() {
 
   function placeOrder() {
     if (!product || submitting) return;
-    setConfirmOpen(false);
     setSubmitting(true);
     setOrderError(null);
-    api.createSingleOrder(product.id, qty)
-      .then((order) => navigate(`/order/${order.id}/success`))
+    api.createSingleOrder(product.id, qty, comment.trim() || undefined)
+      .then((order) => {
+        setCheckoutOpen(false);
+        navigate(`/order/${order.id}/success`);
+      })
       .catch((e) => {
         const detail = e?.response?.data?.detail;
         setOrderError(
@@ -112,7 +115,7 @@ export default function Product() {
   return (
     <main className="page">
       <BackLink to="/">Каталог</BackLink>
-      <div className="page-product">
+      <div className={`page-product${isSingle ? ' is-single' : ''}`}>
         <ProductImage src={product.image_url} alt={product.title} className="hero" />
         <div className="product-head">
           <div className="legend-title">{product.section_title}</div>
@@ -176,7 +179,10 @@ export default function Product() {
                     <button
                       className="btn block"
                       type="button"
-                      onClick={() => setConfirmOpen(true)}
+                      onClick={() => {
+                        setOrderError(null);
+                        setCheckoutOpen(true);
+                      }}
                       disabled={submitting}
                     >
                       {submitting ? 'Отправляю…' : `Заказать · ${formatPrice(total || 0)}`}
@@ -218,15 +224,34 @@ export default function Product() {
       </div>
 
       {isSingle && (
-        <ConfirmDialog
-          open={confirmOpen}
-          title="Оформить заказ?"
-          text={`${product.title} · ${qty} шт. · ${formatPrice(total || 0)}`}
-          confirmLabel="Отправить заказ"
-          cancelLabel="Отмена"
-          onConfirm={placeOrder}
-          onCancel={() => setConfirmOpen(false)}
-        />
+        <Sheet
+          open={checkoutOpen}
+          title="Оформление заказа"
+          onClose={() => {
+            if (!submitting) setCheckoutOpen(false);
+          }}
+          footer={
+            <button className="btn block" type="button" onClick={placeOrder} disabled={submitting}>
+              {submitting ? 'Отправляю…' : `Отправить заказ · ${formatPrice(total || 0)}`}
+            </button>
+          }
+        >
+          <div className="checkout-summary">
+            {product.title} · {qty} шт. · {formatPrice(total || 0)}
+          </div>
+          <div className="field">
+            <label htmlFor="single-order-comment">Дополнительная информация к заказу</label>
+            <textarea
+              id="single-order-comment"
+              value={comment}
+              maxLength={1000}
+              onChange={(event) => setComment(event.target.value)}
+              placeholder="Пожелания по оформлению, упаковке, срокам…"
+            />
+            <div className="admin-muted">Необязательно. Владелец увидит текст в заказе.</div>
+          </div>
+          {orderError && <div className="error-text">{orderError}</div>}
+        </Sheet>
       )}
     </main>
   );

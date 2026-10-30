@@ -374,3 +374,47 @@ def test_single_product_in_admin_list(admin_client, db):
     assert rows[0]["mode"] == "single"
     assert rows[0]["price"] == 1500
     assert rows[0]["from_price"] == 1500
+
+
+def test_single_order_comment_is_saved_and_visible_to_admin(admin_client, db):
+    product = _single(db, price=500)
+
+    with make_user_client(123) as player:
+        response = player.post(
+            "/api/orders",
+            json={
+                "product_id": product.id,
+                "qty": 2,
+                "comment": "  Подарочная упаковка и открытка  ",
+            },
+        )
+    assert response.status_code == 201
+    order = response.json()
+    assert order["comment"] == "Подарочная упаковка и открытка"
+
+    admin_order = admin_client.get(f"/api/admin/orders/{order['id']}").json()
+    assert admin_order["comment"] == "Подарочная упаковка и открытка"
+
+    with make_user_client(123) as player:
+        buyer_order = player.get(f"/api/orders/{order['id']}").json()
+        my_orders = player.get("/api/me/orders").json()
+    assert buyer_order["comment"] == "Подарочная упаковка и открытка"
+    assert my_orders["items"][0]["comment"] == "Подарочная упаковка и открытка"
+
+
+def test_single_order_comment_validation(player_client, db):
+    product = _single(db, price=500)
+
+    empty = player_client.post(
+        "/api/orders",
+        json={"product_id": product.id, "qty": 1, "comment": "   "},
+    )
+    assert empty.status_code == 201
+    assert empty.json()["comment"] is None
+
+    too_long = player_client.post(
+        "/api/orders",
+        json={"product_id": product.id, "qty": 1, "comment": "x" * 1001},
+    )
+    assert too_long.status_code == 400
+    assert "1000" in too_long.json()["detail"]

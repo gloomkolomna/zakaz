@@ -29,10 +29,25 @@ class OrderIn(BaseModel):
     product_id: int
     items: list[ItemIn] = []
     qty: int | None = None
+    comment: str | None = None
+
+
+MAX_COMMENT = 1000
 
 
 def _bad(message: str):
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+
+
+def _comment(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if len(cleaned) > MAX_COMMENT:
+        _bad(f"Комментарий слишком длинный (макс. {MAX_COMMENT} символов)")
+    return cleaned
 
 
 def _cover(card: StepCard) -> str | None:
@@ -96,14 +111,17 @@ def create_order(data: OrderIn, db: Session = Depends(get_db), user: User = Depe
         )
 
     _check_rate_limit(db, user)
+    comment = _comment(data.comment)
 
     if product.mode == "single":
-        return _single_order(db, user, product, data)
+        return _single_order(db, user, product, data, comment)
 
-    return _build_order(db, user, product, data)
+    return _build_order(db, user, product, data, comment)
 
 
-def _build_order(db: Session, user: User, product: Product, data: OrderIn) -> dict:
+def _build_order(
+    db: Session, user: User, product: Product, data: OrderIn, comment: str | None
+) -> dict:
     if not 1 <= len(data.items) <= 100:
         _bad("В заказе должно быть от 1 до 100 позиций")
 
@@ -167,10 +185,12 @@ def _build_order(db: Session, user: User, product: Product, data: OrderIn) -> di
                 sum=line_sum,
             )
         )
-    return _place_order(db, user, product, items, total)
+    return _place_order(db, user, product, items, total, comment)
 
 
-def _single_order(db: Session, user: User, product: Product, data: OrderIn) -> dict:
+def _single_order(
+    db: Session, user: User, product: Product, data: OrderIn, comment: str | None
+) -> dict:
     if data.items:
         _bad("Для одиночного товара состав не передаётся")
     if product.price is None:
@@ -189,11 +209,16 @@ def _single_order(db: Session, user: User, product: Product, data: OrderIn) -> d
         qty=qty,
         sum=total,
     )
-    return _place_order(db, user, product, [item], total)
+    return _place_order(db, user, product, [item], total, comment)
 
 
 def _place_order(
-    db: Session, user: User, product: Product, items: list[OrderItem], total: int
+    db: Session,
+    user: User,
+    product: Product,
+    items: list[OrderItem],
+    total: int,
+    comment: str | None,
 ) -> dict:
     order = Order(
         user_id=user.vk_id,
@@ -203,6 +228,7 @@ def _place_order(
         section_title=product.section.title,
         total=total,
         items_count=len(items),
+        comment=comment,
         status="new",
         queue_order=next_queue_order(db),
         created_at=utcnow(),

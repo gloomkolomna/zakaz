@@ -130,6 +130,7 @@ export interface OrderBrief {
   product_title: string;
   section_title: string;
   items_count: number;
+  comment: string | null;
   buyer_name: string;
   user_id: number;
   read_at: string | null;
@@ -316,10 +317,10 @@ export const api = {
   product: (id: number) => client.get<ProductDetail>(`/products/${id}`).then((res) => res.data),
   info: () => client.get<InfoTexts>('/info').then((res) => res.data),
 
-  createOrder: (productId: number, items: { card_id: number; qty: number }[]) =>
-    client.post<OrderDetail>('/orders', { product_id: productId, items }).then((res) => res.data),
-  createSingleOrder: (productId: number, qty: number) =>
-    client.post<OrderDetail>('/orders', { product_id: productId, qty }).then((res) => res.data),
+  createOrder: (productId: number, items: { card_id: number; qty: number }[], comment?: string) =>
+    client.post<OrderDetail>('/orders', { product_id: productId, items, ...(comment ? { comment } : {}) }).then((res) => res.data),
+  createSingleOrder: (productId: number, qty: number, comment?: string) =>
+    client.post<OrderDetail>('/orders', { product_id: productId, qty, ...(comment ? { comment } : {}) }).then((res) => res.data),
   reserve: (productId: number) =>
     client.post<{ reserved: boolean; created_at: string }>(`/products/${productId}/reserve`).then((res) => res.data),
   cancelReserve: (productId: number) =>

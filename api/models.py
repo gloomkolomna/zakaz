@@ -196,6 +196,7 @@ class Order(Base):
     section_title = Column(String, nullable=False)
     total = Column(Integer, nullable=False, default=0, server_default="0")
     items_count = Column(Integer, nullable=False, default=0, server_default="0")
+    comment = Column(Text, nullable=True)
     status = Column(String, nullable=False, default="new", server_default="new")
     queue_order = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False, default=utcnow, index=True)

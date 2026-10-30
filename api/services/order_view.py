@@ -26,6 +26,7 @@ def order_brief(db, order, positions: dict[int, int] | None = None) -> dict:
         "product_title": order.product_title,
         "section_title": order.section_title,
         "items_count": order.items_count,
+        "comment": order.comment,
         "buyer_name": order.buyer_name,
         "user_id": order.user_id,
         "read_at": order.read_at.isoformat() if order.read_at else None,

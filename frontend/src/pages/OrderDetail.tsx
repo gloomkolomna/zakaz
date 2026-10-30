@@ -93,6 +93,13 @@ export default function OrderDetail() {
         ))}
       </section>
 
+      {order.comment && (
+        <div className="order-comment-view">
+          <div className="legend-title">Дополнительная информация</div>
+          <p className="body-text">{order.comment}</p>
+        </div>
+      )}
+
       <div className="total">
         <span className="total-label">Итого</span>
         <span className="total-value">{formatPrice(order.total)}</span>

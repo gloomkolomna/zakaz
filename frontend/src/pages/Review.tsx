@@ -20,6 +20,7 @@ export default function Review() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [comment, setComment] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +56,7 @@ export default function Review() {
     if (!product || product.sold_out || submitting || count === 0 || missing.length > 0) return;
     setSubmitting(true);
     setError(null);
-    api.createOrder(product.id, buildItems(selected, steps))
+    api.createOrder(product.id, buildItems(selected, steps), comment.trim() || undefined)
       .then((order) => {
         clearDraft(productId);
         navigate(`/order/${order.id}/success`);
@@ -159,6 +160,18 @@ export default function Review() {
           ))}
         </section>
       ))}
+
+      <div className="field order-comment">
+        <label htmlFor="order-comment">Дополнительная информация к заказу</label>
+        <textarea
+          id="order-comment"
+          value={comment}
+          maxLength={1000}
+          onChange={(event) => setComment(event.target.value)}
+          placeholder="Пожелания по оформлению, упаковке, срокам…"
+        />
+        <div className="admin-muted">Необязательно. Владелец увидит текст в заказе.</div>
+      </div>
 
       <div className="total">
         <span className="total-label">Итого</span>

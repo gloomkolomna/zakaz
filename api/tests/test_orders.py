@@ -340,6 +340,24 @@ def test_order_rate_limit_per_user(player_client, db, monkeypatch):
             ).status_code == 201
 
 
+def test_order_comment_saved_for_build_order(player_client, db):
+    product, small, large, linen = _shop(db)
+    response = player_client.post(
+        "/api/orders",
+        json={
+            "product_id": product.id,
+            "items": [{"card_id": small.id, "qty": 1}],
+            "comment": "Без упаковки, заберу сам",
+        },
+    )
+    assert response.status_code == 201
+    order = response.json()
+    assert order["comment"] == "Без упаковки, заберу сам"
+
+    detail = player_client.get(f"/api/orders/{order['id']}").json()
+    assert detail["comment"] == "Без упаковки, заберу сам"
+
+
 def test_order_queue_positions_and_compression(player_client, db):
     product, small, large, linen = _shop(db)
 

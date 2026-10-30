@@ -22,6 +22,10 @@ export default function CardGallery({ title, images }: CardGalleryProps) {
 
   const active = images[Math.min(activeIndex, images.length - 1)];
   const activeAlt = `${title} — фото ${activeIndex + 1}`;
+  const zoomImages = images.map((image, index) => ({
+    url: mediaUrl(image.url),
+    alt: `${title} — фото ${index + 1}`,
+  }));
 
   return (
     <section className="card-gallery" aria-label={`Фото: ${title}`}>
@@ -46,12 +50,9 @@ export default function CardGallery({ title, images }: CardGalleryProps) {
               key={image.id}
               className={`card-gallery-thumb${index === activeIndex ? ' is-active' : ''}`}
               type="button"
-              aria-label={`Фото ${index + 1}`}
+              aria-label={`Показать фото ${index + 1}`}
               aria-pressed={index === activeIndex}
-              onClick={() => {
-                setActiveIndex(index);
-                setZoom(true);
-              }}
+              onClick={() => setActiveIndex(index)}
             >
               <img src={mediaUrl(image.url)} alt="" loading="lazy" />
             </button>
@@ -59,7 +60,14 @@ export default function CardGallery({ title, images }: CardGalleryProps) {
         </div>
       )}
       {zoom && (
-        <ZoomModal src={mediaUrl(active.url)} alt={activeAlt} onClose={() => setZoom(false)} />
+        <ZoomModal
+          src={mediaUrl(active.url)}
+          alt={activeAlt}
+          images={zoomImages}
+          index={activeIndex}
+          onIndexChange={setActiveIndex}
+          onClose={() => setZoom(false)}
+        />
       )}
     </section>
   );

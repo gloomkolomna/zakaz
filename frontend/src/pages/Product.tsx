@@ -87,7 +87,7 @@ export default function Product() {
   }
 
   function placeOrder() {
-    if (!product || submitting) return;
+    if (!product || submitting || product.is_hidden) return;
     setSubmitting(true);
     setOrderError(null);
     api.createSingleOrder(product.id, qty, comment.trim() || undefined)
@@ -148,16 +148,7 @@ export default function Product() {
 
           {product.is_early && <EarlyNote until={product.early_until} />}
 
-          {product.is_hidden ? (
-            <div className="blocked-cta">
-              <button className="btn block" type="button" disabled>
-                {isSingle ? 'Заказать' : 'Собрать заказ'}
-              </button>
-              <div className="blocked-note">
-                Заказ станет доступен после публикации товара и раздела.
-              </div>
-            </div>
-          ) : !ready ? (
+          {!ready ? (
             <div className="blocked-cta">
               <button className="btn block" type="button" disabled>
                 Скоро в продаже
@@ -249,14 +240,26 @@ export default function Product() {
             if (!submitting) setCheckoutOpen(false);
           }}
           footer={
-            <button className="btn block" type="button" onClick={placeOrder} disabled={submitting}>
-              {submitting ? 'Отправляю…' : `Отправить заказ · ${formatPrice(total || 0)}`}
+            <button
+              className="btn block"
+              type="button"
+              onClick={placeOrder}
+              disabled={submitting || product.is_hidden}
+            >
+              {product.is_hidden
+                ? 'Режим просмотра'
+                : submitting
+                  ? 'Отправляю…'
+                  : `Отправить заказ · ${formatPrice(total || 0)}`}
             </button>
           }
         >
           <div className="checkout-summary">
             {product.title} · {qty} шт. · {formatPrice(total || 0)}
           </div>
+          {product.is_hidden && (
+            <p className="note">Режим просмотра — заказ не отправится.</p>
+          )}
           <div className="field">
             <label htmlFor="single-order-comment">Дополнительная информация к заказу</label>
             <textarea

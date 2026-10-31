@@ -62,3 +62,16 @@ def test_visible_product_is_not_hidden(player_client, db):
 
 def test_admin_preview_of_missing_product_is_404(admin_client):
     assert admin_client.get("/api/products/99999").status_code == 404
+
+
+def test_hidden_product_cannot_be_ordered_even_by_admin(admin_client, db):
+    product = _hidden_product(db)
+    card = product.steps[0].cards[0]
+
+    res = admin_client.post(
+        "/api/orders",
+        json={"product_id": product.id, "items": [{"card_id": card.id, "qty": 1}]},
+    )
+
+    assert res.status_code == 400
+    assert res.json()["detail"] == "Товар недоступен"

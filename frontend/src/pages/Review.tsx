@@ -53,7 +53,7 @@ export default function Review() {
   }
 
   function submit() {
-    if (!product || product.sold_out || submitting || count === 0 || missing.length > 0) return;
+    if (!product || product.is_hidden || product.sold_out || submitting || count === 0 || missing.length > 0) return;
     setSubmitting(true);
     setError(null);
     api.createOrder(product.id, buildItems(selected, steps), comment.trim() || undefined)
@@ -106,6 +106,13 @@ export default function Review() {
       <BackLink to={`/product/${productId}/build`}>К шагам</BackLink>
       <h1>Ваш заказ</h1>
       <div className="legend-title">{product.title}</div>
+
+      {product.is_hidden && (
+        <div className="preview-note">
+          Режим просмотра — заказ не отправится. Опубликуйте товар, чтобы оформить
+          настоящий заказ.
+        </div>
+      )}
 
       {product.sold_out && (
         <div className="alert">
@@ -177,17 +184,25 @@ export default function Review() {
         <span className="total-label">Итого</span>
         <span className="total-value">{formatPrice(total)}</span>
       </div>
-      <p className="note">Оплата и доставка — в переписке ВКонтакте. После отправки состав не меняется.</p>
+      {!product.is_hidden && (
+        <p className="note">Оплата и доставка — в переписке ВКонтакте. После отправки состав не меняется.</p>
+      )}
       {error && <div className="error-text">{error}</div>}
 
       <div className="bar">
         <button
           className="btn"
           type="button"
-          disabled={submitting || product.sold_out || count === 0 || missing.length > 0}
+          disabled={product.is_hidden || submitting || product.sold_out || count === 0 || missing.length > 0}
           onClick={submit}
         >
-          {product.sold_out ? 'Товар закончился' : submitting ? 'Отправляю…' : 'Отправить заказ'}
+          {product.is_hidden
+            ? 'Режим просмотра'
+            : product.sold_out
+              ? 'Товар закончился'
+              : submitting
+                ? 'Отправляю…'
+                : 'Отправить заказ'}
         </button>
       </div>
 

@@ -1208,6 +1208,10 @@ h1 {
 
 .sheet-picks .pick-media svg { position: absolute; inset: 0; }
 
+.sheet-picks .note {
+  margin-bottom: 12px;
+}
+
 .sheet-card > .btn { flex: none; margin-top: 14px; }
 
 @media (min-width: 880px) {

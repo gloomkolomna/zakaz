@@ -122,6 +122,9 @@ export default function Builder() {
   return (
     <main className="page page-builder">
       <BackLink to={`/product/${productId}`}>К товару</BackLink>
+      {product.is_hidden && (
+        <div className="preview-note">Режим просмотра — заказ не отправится.</div>
+      )}
       <div className="step-head">
         <h1>{step.title}</h1>
         <div className="step-meta">

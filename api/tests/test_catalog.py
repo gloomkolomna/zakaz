@@ -497,7 +497,9 @@ def test_steps_and_cards_crud_reorder_and_from_price(admin_client, db):
     assert admin_client.post("/api/admin/steps/reorder", json={"product_id": product.id, "ids": [step_id]}).status_code == 200
 
     assert admin_client.delete(f"/api/admin/cards/{card_id}").status_code == 200
+    assert admin_client.get(f"/api/admin/steps/{step_id}/cards").json() == []
     assert admin_client.delete(f"/api/admin/steps/{step_id}").status_code == 200
     detail = admin_client.get(f"/api/admin/products/{product.id}").json()
-    assert detail["steps"][0]["is_active"] is False
+    assert detail["steps"] == []
     assert detail["from_price"] is None
+    assert admin_client.delete(f"/api/admin/steps/{step_id}").status_code == 404

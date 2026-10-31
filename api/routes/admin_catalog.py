@@ -318,6 +318,17 @@ def _detach_orders(db, product: Product) -> None:
         )
 
 
+def _detach_cards(db, card_ids: list[int]) -> None:
+    if card_ids:
+        db.query(OrderItem).filter(OrderItem.card_id.in_(card_ids)).update(
+            {OrderItem.card_id: None}, synchronize_session=False
+        )
+
+
+def _card_image_urls(cards: list[StepCard]) -> list[str]:
+    return [image.image_url for card in cards for image in card.images]
+
+
 def _step(db: Session, step_id: int) -> ProductStep:
     row = db.query(ProductStep).filter(ProductStep.id == step_id).first()
     if row is None:
@@ -763,8 +774,13 @@ def update_step(step_id: int, data: StepIn, db: Session = Depends(get_db), user:
 @router.delete("/steps/{step_id}")
 def delete_step(step_id: int, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     row = _step(db, step_id)
-    row.is_active = False
+    cards = list(row.cards)
+    image_urls = _card_image_urls(cards)
+    _detach_cards(db, [card.id for card in cards])
+    db.delete(row)
     db.commit()
+    for url in image_urls:
+        remove_upload(url)
     return {"ok": True}
 
 
@@ -849,8 +865,12 @@ def update_card(card_id: int, data: CardIn, db: Session = Depends(get_db), user:
 @router.delete("/cards/{card_id}")
 def delete_card(card_id: int, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     row = _card(db, card_id)
-    row.is_active = False
+    image_urls = _card_image_urls([row])
+    _detach_cards(db, [row.id])
+    db.delete(row)
     db.commit()
+    for url in image_urls:
+        remove_upload(url)
     return {"ok": True}
 
 

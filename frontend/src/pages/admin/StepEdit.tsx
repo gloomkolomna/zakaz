@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   api,
   type AdminCard,
@@ -79,6 +79,8 @@ export default function StepEdit() {
   const { id, stepId } = useParams();
   const productId = Number(id);
   const stepIdNumber = Number(stepId);
+  const navigate = useNavigate();
+  const confirm = useConfirm();
 
   const [product, setProduct] = useState<AdminProduct | null>(null);
   const [step, setStep] = useState<AdminStep | null>(null);
@@ -200,6 +202,27 @@ export default function StepEdit() {
     commit({ is_active }, { ...current, is_active });
   }
 
+  function toggleVisible() {
+    if (!draft) return;
+    saveVisible(!draft.is_active);
+  }
+
+  async function removeStep() {
+    const current = draft;
+    if (!current) return;
+    const title = current.title.trim() || 'Шаг';
+    const ok = await confirm({
+      title: `Удалить шаг «${title}»?`,
+      text: 'Шаг, его карточки и фото удалятся навсегда. История заказов сохранится.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
+    api.adminDeleteStep(stepIdNumber)
+      .then(() => navigate(`/admin/products/${productId}`))
+      .catch((e) => setError(e?.response?.data?.detail || 'Не удалось удалить шаг'));
+  }
+
   function moveCard(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (!cards || target < 0 || target >= cards.length) return;
@@ -265,6 +288,14 @@ export default function StepEdit() {
             {!draft.is_active ? ' · скрыт' : ''}
           </div>
         </div>
+        <div className="admin-actions">
+          <button className="btn secondary" type="button" onClick={toggleVisible}>
+            {draft.is_active ? 'Скрыть' : 'Показать'}
+          </button>
+          <button className="icon-action red" type="button" onClick={() => void removeStep()}>
+            Удалить
+          </button>
+        </div>
       </div>
 
       {error && <div className="error-text">{error}</div>}
@@ -318,26 +349,14 @@ export default function StepEdit() {
           />
           Обязательный шаг — без выбора покупатель не пройдёт дальше
         </label>
-        <label className="checkbox">
-          <input
-            id="step-visible"
-            type="checkbox"
-            checked={draft.is_active}
-            onChange={(event) => saveVisible(event.target.checked)}
-          />
-          Показывается покупателю
-        </label>
-        <div className="admin-muted">
-          Скрытый шаг и его карточки не видны в каталоге, но остаются здесь.
-        </div>
       </div>
 
       <div className="admin-section-head">
         <div>
           <h3 className="section-title">Карточки</h3>
           <p className="admin-muted">
-            {cardsLabel}. Снимите «Показывается покупателю», чтобы убрать карточку из
-            шага — она останется здесь и её можно вернуть.
+            {cardsLabel}. «Скрыть» убирает карточку из шага, но оставляет её здесь —
+            потом можно вернуть. «Удалить» стирает карточку и её фото навсегда.
           </p>
         </div>
         <a className="btn secondary" href="#new-card">
@@ -501,6 +520,19 @@ function CardEditor({
     commit({ is_active }, { ...current, is_active });
   }
 
+  async function removeCard() {
+    const ok = await confirm({
+      title: `Удалить карточку «${draft.title.trim() || card.title}»?`,
+      text: 'Карточка и её фото удалятся навсегда. История заказов сохранится.',
+      confirmLabel: 'Удалить',
+      danger: true,
+    });
+    if (!ok) return;
+    api.adminDeleteCard(card.id)
+      .then(onChanged)
+      .catch((e) => setSave(saveError(e?.response?.data?.detail || 'Не удалось удалить карточку')));
+  }
+
   async function uploadImages(files: File[]) {
     if (files.length === 0 || uploading) return;
     const remaining = MAX_CARD_IMAGES - card.images.length;
@@ -630,15 +662,6 @@ function CardEditor({
             />
           </div>
         </div>
-        <label className="checkbox">
-          <input
-            id={`card-${card.id}-visible`}
-            type="checkbox"
-            checked={draft.is_active}
-            onChange={(event) => saveVisible(event.target.checked)}
-          />
-          Показывается покупателю
-        </label>
       </div>
 
       <div className="card-editor-photos">
@@ -702,6 +725,19 @@ function CardEditor({
             </label>
           )}
         </div>
+      </div>
+
+      <div className="admin-actions card-editor-actions">
+        <button
+          className="btn secondary"
+          type="button"
+          onClick={() => saveVisible(!draft.is_active)}
+        >
+          {draft.is_active ? 'Скрыть' : 'Показать'}
+        </button>
+        <button className="icon-action red" type="button" onClick={() => void removeCard()}>
+          Удалить
+        </button>
       </div>
     </article>
   );

@@ -2278,6 +2278,12 @@ a.brand:active {
   border-top: 1px solid var(--line-soft);
 }
 
+.card-editor-actions {
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
 .card-editor-subhead {
   display: flex;
   flex-wrap: wrap;
@@ -2434,10 +2440,15 @@ a.brand:active {
 
 .admin-page-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.admin-page-head > div {
+  min-width: 0;
 }
 
 .admin-page-head .section-title {

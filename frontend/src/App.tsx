@@ -21,6 +21,7 @@ const SectionsTab = lazy(() => import('./pages/admin/SectionsTab'));
 const ProductsTab = lazy(() => import('./pages/admin/ProductsTab'));
 const ProductCreate = lazy(() => import('./pages/admin/ProductCreate'));
 const ProductEdit = lazy(() => import('./pages/admin/ProductEdit'));
+const StepEdit = lazy(() => import('./pages/admin/StepEdit'));
 const OrdersTab = lazy(() => import('./pages/admin/OrdersTab'));
 const AdminOrderDetail = lazy(() => import('./pages/admin/AdminOrderDetail'));
 const ReserveTab = lazy(() => import('./pages/admin/ReserveTab'));
@@ -109,6 +110,7 @@ export default function App() {
               <Route path="products" element={<ProductsTab />} />
               <Route path="products/new" element={<ProductCreate />} />
               <Route path="products/:id" element={<ProductEdit />} />
+              <Route path="products/:id/steps/:stepId" element={<StepEdit />} />
               <Route path="orders" element={<OrdersTab />} />
               <Route path="orders/:id" element={<AdminOrderDetail />} />
               <Route path="reserve" element={<ReserveTab />} />

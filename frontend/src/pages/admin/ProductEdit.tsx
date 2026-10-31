@@ -1,70 +1,91 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   api,
-  type AdminCard,
   type AdminProduct,
   type AdminSection,
-  type AdminStep,
   type CardImage,
   type ProductMode,
 } from '../../api/endpoints';
-import { formatEarlyUntil, formatPrice } from '../../api/money';
+import { formatEarlyUntil } from '../../api/money';
 import { mediaUrl } from '../../api/media';
+import { plural } from '../../api/plural';
 import BackLink from '../../components/BackLink';
 import { useConfirm } from '../../components/ConfirmProvider';
+import SaveStatus, { saveDone, saveError, saveIdle, saveSaving, type SaveInfo } from '../../components/SaveStatus';
 import Skeleton from '../../components/Skeleton';
 
-interface ProductForm {
+interface ProductDraft {
   section_id: number;
   title: string;
   description: string;
   mode: ProductMode;
-  price: number;
-  stock: number;
-  sort_order: number;
+  price: string;
+  stock: string;
+  sort_order: string;
   is_active: boolean;
 }
 
-const MAX_CARD_IMAGES = 10;
 const MAX_PRODUCT_IMAGES = 10;
+
+function draftOf(product: AdminProduct): ProductDraft {
+  return {
+    section_id: product.section_id,
+    title: product.title,
+    description: product.description || '',
+    mode: product.mode,
+    price: String(product.price ?? 0),
+    stock: product.stock > 0 ? String(product.stock) : '',
+    sort_order: String(product.sort_order),
+    is_active: product.is_active,
+  };
+}
+
+function blurOnEnter(event: KeyboardEvent<HTMLInputElement>) {
+  if (event.key === 'Enter') event.currentTarget.blur();
+}
+
+function parseCount(value: string): number | null {
+  const cleaned = value.trim();
+  if (!cleaned) return null;
+  const parsed = Number(cleaned);
+  if (!Number.isInteger(parsed)) return null;
+  return parsed;
+}
 
 export default function ProductEdit() {
   const { id } = useParams();
   const productId = Number(id);
   const navigate = useNavigate();
   const confirm = useConfirm();
+
   const [product, setProduct] = useState<AdminProduct | null>(null);
   const [sections, setSections] = useState<AdminSection[]>([]);
-  const [form, setForm] = useState<ProductForm | null>(null);
+  const [draft, setDraft] = useState<ProductDraft | null>(null);
+  const [save, setSave] = useState<SaveInfo>({ state: 'idle', message: null });
   const [videoUrl, setVideoUrl] = useState('');
-  const [newStep, setNewStep] = useState({ title: '', mode: 'single' as 'single' | 'multi', required: false });
+  const [newStepTitle, setNewStepTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const savedDraft = useRef<ProductDraft | null>(null);
 
   function load() {
-    Promise.all([api.adminProduct(productId), api.adminSections()])
+    return Promise.all([api.adminProduct(productId), api.adminSections()])
       .then(([data, sectionRows]) => {
         setProduct(data);
         setSections(sectionRows);
-        setForm({
-          section_id: data.section_id,
-          title: data.title,
-          description: data.description || '',
-          mode: data.mode,
-          price: data.price ?? 0,
-          stock: data.stock,
-          sort_order: data.sort_order,
-          is_active: data.is_active,
-        });
+        const next = draftOf(data);
+        savedDraft.current = next;
+        setDraft(next);
         setVideoUrl(data.video_url || '');
       })
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось загрузить товар'));
   }
 
-  useEffect(load, [productId]);
+  useEffect(() => {
+    void load();
+  }, [productId]);
 
-  if (!product || !form) {
+  if (!product || !draft) {
     if (error) {
       return (
         <section>
@@ -76,13 +97,55 @@ export default function ProductEdit() {
     return <Skeleton lines={4} />;
   }
 
-  function update<K extends keyof ProductForm>(key: K, value: ProductForm[K]) {
-    setForm((current) => (current ? { ...current, [key]: value } : current));
+  function update(patch: Partial<ProductDraft>) {
+    setSave(saveIdle);
+    setDraft((current) => (current ? { ...current, ...patch } : current));
   }
 
-  async function changeMode(next: ProductMode) {
-    if (!form || next === form.mode) return;
-    if (next === 'single' && (product?.steps?.length || 0) > 0) {
+  function commit(patch: Partial<AdminProduct>, next: ProductDraft) {
+    setSave(saveSaving);
+    api.adminUpdateProduct(productId, patch)
+      .then(() => {
+        savedDraft.current = { ...next };
+        setSave(saveDone);
+      })
+      .catch((e) => setSave(saveError(e?.response?.data?.detail || 'Не удалось сохранить товар')));
+  }
+
+  function saveTitle() {
+    const current = draft;
+    const saved = savedDraft.current;
+    if (!current || !saved) return;
+    const title = current.title.trim();
+    if (!title) {
+      setSave(saveError('Название не может быть пустым'));
+      return;
+    }
+    if (title === saved.title) {
+      if (current.title !== title) update({ title });
+      return;
+    }
+    update({ title });
+    commit({ title }, { ...current, title });
+  }
+
+  function saveDescription() {
+    const current = draft;
+    const saved = savedDraft.current;
+    if (!current || !saved || current.description === saved.description) return;
+    commit({ description: current.description }, current);
+  }
+
+  function saveSection(section_id: number) {
+    if (!draft || section_id === draft.section_id) return;
+    update({ section_id });
+    commit({ section_id }, { ...draft, section_id });
+  }
+
+  async function saveMode(mode: ProductMode) {
+    if (!draft || mode === draft.mode) return;
+    const hasSteps = (product?.steps?.length || 0) > 0;
+    if (mode === 'single' && hasSteps) {
       const ok = await confirm({
         title: 'Переключить в одиночный режим?',
         text: 'Шаги и карточки сохранятся, но покупатель будет заказывать товар целиком по одной цене. Вернуться в сборный режим можно в любой момент.',
@@ -90,23 +153,59 @@ export default function ProductEdit() {
       });
       if (!ok) return;
     }
-    update('mode', next);
+    update({ mode });
+    commit({ mode }, { ...draft, mode });
   }
 
-  function save() {
-    if (!form) return;
-    if (form.mode === 'single' && (!Number.isFinite(form.price) || form.price < 0)) {
-      setError('Укажите цену одиночного товара');
+  function savePrice() {
+    if (!draft) return;
+    const saved = savedDraft.current;
+    if (!saved) return;
+    const price = parseCount(draft.price);
+    if (price === null || price < 0) {
+      update({ price: saved.price });
+      setSave(saveError('Цена — целое число от 0 ₽'));
       return;
     }
-    setSaving(true);
-    api.adminUpdateProduct(productId, form)
-      .then(() => {
-        setError(null);
-        load();
-      })
-      .catch((e) => setError(e?.response?.data?.detail || 'Не удалось сохранить товар'))
-      .finally(() => setSaving(false));
+    update({ price: String(price) });
+    if (price === Number(saved.price)) return;
+    commit({ price }, { ...draft, price: String(price) });
+  }
+
+  function saveStock() {
+    if (!draft) return;
+    const saved = savedDraft.current;
+    if (!saved) return;
+    const stock = draft.stock.trim() ? parseCount(draft.stock) : 0;
+    if (stock === null || stock < 0) {
+      update({ stock: saved.stock });
+      setSave(saveError('Кол-во копий не может быть отрицательным'));
+      return;
+    }
+    update({ stock: stock > 0 ? String(stock) : '' });
+    if (stock === Number(saved.stock || '0')) return;
+    commit({ stock }, { ...draft, stock: stock > 0 ? String(stock) : '' });
+  }
+
+  function saveSortOrder() {
+    if (!draft) return;
+    const saved = savedDraft.current;
+    if (!saved) return;
+    const sortOrder = parseCount(draft.sort_order);
+    if (sortOrder === null) {
+      update({ sort_order: saved.sort_order });
+      setSave(saveError('Порядок — целое число'));
+      return;
+    }
+    update({ sort_order: String(sortOrder) });
+    if (sortOrder === Number(saved.sort_order)) return;
+    commit({ sort_order: sortOrder }, { ...draft, sort_order: String(sortOrder) });
+  }
+
+  function savePublish(is_active: boolean) {
+    if (!draft) return;
+    update({ is_active });
+    commit({ is_active }, { ...draft, is_active });
   }
 
   function uploadImage(file: File | undefined) {
@@ -116,7 +215,9 @@ export default function ProductEdit() {
 
   function uploadVideo(file: File | undefined) {
     if (!file) return;
-    api.adminUploadProductVideo(productId, file).then(load).catch((e) => setError(e?.response?.data?.detail || 'Не удалось загрузить видео'));
+    api.adminUploadProductVideo(productId, file)
+      .then(load)
+      .catch((e) => setError(e?.response?.data?.detail || 'Не удалось загрузить видео'));
   }
 
   function uploadPoster(file: File | undefined) {
@@ -142,8 +243,7 @@ export default function ProductEdit() {
   }
 
   function toggleEarly() {
-    const next = !product!.is_early;
-    api.adminSetEarly(productId, next)
+    api.adminSetEarly(productId, !product!.is_early)
       .then(load)
       .catch(() => setError('Не удалось переключить «до анонса»'));
   }
@@ -161,123 +261,271 @@ export default function ProductEdit() {
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось удалить товар'));
   }
 
-  function addStep() {
-    if (!newStep.title.trim()) return;
-    api.adminCreateStep(productId, {
-      title: newStep.title.trim(),
-      selection_mode: newStep.mode,
-      is_required: newStep.required,
-    })
-      .then(() => {
-        setNewStep({ title: '', mode: 'single', required: false });
-        load();
-      })
+  function addStep(event: FormEvent) {
+    event.preventDefault();
+    const title = newStepTitle.trim();
+    if (!title) return;
+    api.adminCreateStep(productId, { title, selection_mode: 'single', is_required: false })
+      .then((created) => navigate(`/admin/products/${productId}/steps/${created.id}`))
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось добавить шаг'));
   }
 
   function moveStep(index: number, direction: -1 | 1) {
-    if (!product?.steps) return;
+    const steps = product?.steps || [];
     const target = index + direction;
-    if (target < 0 || target >= product.steps.length) return;
-    const ids = product.steps.map((step) => step.id);
-    [ids[index], ids[target]] = [ids[target], ids[index]];
-    api.adminReorderSteps(productId, ids).then(load).catch(() => setError('Не удалось изменить порядок'));
+    if (target < 0 || target >= steps.length) return;
+    const next = [...steps];
+    [next[index], next[target]] = [next[target], next[index]];
+    setProduct((current) => (current ? { ...current, steps: next } : current));
+    api.adminReorderSteps(productId, next.map((step) => step.id))
+      .catch(() => {
+        setError('Не удалось изменить порядок');
+        void load();
+      });
   }
 
   const steps = product.steps || [];
+  const sectionTitle = sections.find((row) => row.id === draft.section_id)?.title || 'Раздел';
+  const stepsLabel = `${steps.length} ${plural(steps.length, 'шаг', 'шага', 'шагов')}`;
 
   return (
     <section>
       <BackLink to="/admin/products">К товарам</BackLink>
-      <h2 className="section-title">{product.title}</h2>
+
+      <div className="admin-page-head">
+        <div>
+          <h2 className="admin-entity-title">{draft.title || 'Товар'}</h2>
+          <div className="admin-muted">
+            {sectionTitle} · {draft.mode === 'single' ? 'одиночный товар' : 'сборный товар'}
+            {!draft.is_active ? ' · скрыт' : ''}
+            {product.sold_out ? ' · закончился' : ''}
+            {product.is_early ? ' · до анонса' : ''}
+          </div>
+        </div>
+      </div>
+
       {error && <div className="error-text">{error}</div>}
 
       <div className="admin-form">
+        <div className="admin-section-head">
+          <h3 className="section-title">Основное</h3>
+          <SaveStatus save={save} idleLabel="Сохраняется автоматически" />
+        </div>
         <div className="form-grid two">
           <div className="field">
             <label htmlFor="edit-section">Раздел</label>
-            <select id="edit-section" value={form.section_id} onChange={(event) => update('section_id', Number(event.target.value))}>
+            <select
+              id="edit-section"
+              value={draft.section_id}
+              onChange={(event) => saveSection(Number(event.target.value))}
+            >
               {sections.map((section) => (
-                <option key={section.id} value={section.id}>{section.title}</option>
+                <option key={section.id} value={section.id}>
+                  {section.title}
+                </option>
               ))}
             </select>
           </div>
           <div className="field">
             <label htmlFor="edit-title">Название</label>
-            <input id="edit-title" value={form.title} onChange={(event) => update('title', event.target.value)} />
+            <input
+              id="edit-title"
+              value={draft.title}
+              onChange={(event) => update({ title: event.target.value })}
+              onBlur={saveTitle}
+              onKeyDown={blurOnEnter}
+            />
           </div>
         </div>
         <div className="field">
           <label htmlFor="edit-description">Описание</label>
-          <textarea id="edit-description" value={form.description} onChange={(event) => update('description', event.target.value)} />
+          <textarea
+            id="edit-description"
+            value={draft.description}
+            onChange={(event) => update({ description: event.target.value })}
+            onBlur={saveDescription}
+          />
         </div>
         <div className="form-grid two">
           <div className="field">
             <label htmlFor="edit-mode">Тип товара</label>
-            <select id="edit-mode" value={form.mode} onChange={(event) => void changeMode(event.target.value as ProductMode)}>
+            <select
+              id="edit-mode"
+              value={draft.mode}
+              onChange={(event) => void saveMode(event.target.value as ProductMode)}
+            >
               <option value="build">Сборный — шаги и карточки</option>
               <option value="single">Одиночный — готовая цена</option>
             </select>
             <div className="admin-muted">
-              {form.mode === 'single'
+              {draft.mode === 'single'
                 ? 'Без шагов: главное фото, карусель, цена и количество.'
                 : 'Покупатель собирает заказ по шагам из карточек.'}
             </div>
           </div>
-          {form.mode === 'single' && (
+          {draft.mode === 'single' && (
             <div className="field">
               <label htmlFor="edit-price">Цена, ₽</label>
               <input
                 id="edit-price"
                 type="number"
                 min={0}
-                value={form.price}
-                onChange={(event) => update('price', Number(event.target.value) || 0)}
+                value={draft.price}
+                onChange={(event) => update({ price: event.target.value })}
+                onBlur={savePrice}
+                onKeyDown={blurOnEnter}
               />
             </div>
           )}
         </div>
         <div className="form-grid two">
           <div className="field">
-            <label htmlFor="edit-sort">Порядок</label>
-            <input id="edit-sort" type="number" value={form.sort_order} onChange={(event) => update('sort_order', Number(event.target.value))} />
-          </div>
-          <div className="field">
             <label htmlFor="edit-stock">Кол-во копий</label>
             <input
               id="edit-stock"
               type="number"
               min={0}
-              value={form.stock || ''}
+              value={draft.stock}
               placeholder="Без ограничения"
-              onChange={(event) => update('stock', Number(event.target.value) || 0)}
+              onChange={(event) => update({ stock: event.target.value })}
+              onBlur={saveStock}
+              onKeyDown={blurOnEnter}
             />
             <div className="admin-muted">
-              {product.stock > 0
-                ? `Заказано ${product.ordered_count} из ${product.stock}${product.sold_out ? ' · товар закончился' : ''}`
+              {Number(draft.stock || 0) > 0
+                ? `Заказано ${product.ordered_count} из ${draft.stock}${product.sold_out ? ' · товар закончился' : ''}`
                 : `Заказано ${product.ordered_count}, без ограничения`}
             </div>
           </div>
+          <div className="field">
+            <label htmlFor="edit-sort">Порядок</label>
+            <input
+              id="edit-sort"
+              type="number"
+              value={draft.sort_order}
+              onChange={(event) => update({ sort_order: event.target.value })}
+              onBlur={saveSortOrder}
+              onKeyDown={blurOnEnter}
+            />
+            <div className="admin-muted">Меньше — выше в разделе.</div>
+          </div>
         </div>
         <label className="checkbox">
-          <input type="checkbox" checked={form.is_active} onChange={(event) => update('is_active', event.target.checked)} />
+          <input
+            type="checkbox"
+            checked={draft.is_active}
+            onChange={(event) => savePublish(event.target.checked)}
+          />
           Опубликован — виден в каталоге
         </label>
         <div className="admin-muted">
           Пусто или 0 — без ограничения. Одна копия = один заказ; отменённые заказы копию не занимают.
         </div>
-        <div>
-          <button className="btn" type="button" onClick={save} disabled={saving || !form.title.trim()}>
-            {saving ? 'Сохраняю…' : 'Сохранить товар'}
-          </button>
-        </div>
       </div>
 
+      {draft.mode === 'build' ? (
+        <>
+          <div className="admin-section-head">
+            <div>
+              <h3 className="section-title">Шаги</h3>
+              <p className="admin-muted">
+                {stepsLabel}. Порядок — стрелками. Карточки и свойства шага — на его экране.
+              </p>
+            </div>
+          </div>
+
+          <div className="step-list">
+            {steps.map((step, index) => (
+              <div className="step-row" key={step.id}>
+                <Link className="step-row-link" to={`/admin/products/${productId}/steps/${step.id}`}>
+                  <span className="step-row-index" aria-hidden="true">
+                    {index + 1}
+                  </span>
+                  <span className="step-row-body">
+                    <span className="step-row-title">
+                      {step.title}
+                      {!step.is_active && <span className="pill-draft">Скрыт</span>}
+                      {step.cards_count === 0 && <span className="pill-draft">Пустой</span>}
+                    </span>
+                    {step.hint?.trim() && (
+                      <span className="step-row-hint">{step.hint.trim()}</span>
+                    )}
+                    <span className="step-row-meta">
+                      {step.selection_mode === 'single' ? 'Один вариант' : 'Несколько вариантов'} ·{' '}
+                      {step.cards_count} {plural(step.cards_count, 'карточка', 'карточки', 'карточек')}
+                      {step.is_required ? ' · обязательный' : ''}
+                    </span>
+                  </span>
+                  <span className="step-row-go" aria-hidden="true">
+                    ›
+                  </span>
+                </Link>
+                <div className="admin-actions">
+                  <button
+                    className="icon-action"
+                    type="button"
+                    onClick={() => moveStep(index, -1)}
+                    disabled={index === 0}
+                    aria-label="Шаг выше"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    className="icon-action"
+                    type="button"
+                    onClick={() => moveStep(index, 1)}
+                    disabled={index === steps.length - 1}
+                    aria-label="Шаг ниже"
+                  >
+                    ↓
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {steps.length === 0 && (
+            <div className="empty">
+              Пока нет шагов — без них товар помечается «скоро». Добавьте первый.
+            </div>
+          )}
+
+          <form className="admin-form" onSubmit={addStep}>
+            <h3 className="section-title">Новый шаг</h3>
+            <div className="field">
+              <label htmlFor="new-step-title">Название шага</label>
+              <input
+                id="new-step-title"
+                value={newStepTitle}
+                onChange={(event) => setNewStepTitle(event.target.value)}
+                placeholder="Например, «Размер»"
+              />
+            </div>
+            <div className="admin-muted">
+              Шаг создастся пустым и сразу откроется: режим выбора, подсказку и карточки
+              добавите там.
+            </div>
+            <div>
+              <button className="btn" type="submit" disabled={!newStepTitle.trim()}>
+                Создать шаг
+              </button>
+            </div>
+          </form>
+        </>
+      ) : (
+        <div className="admin-form">
+          <h3 className="section-title">Шаги</h3>
+          <p className="admin-muted">
+            Одиночный товар продаётся целиком: шаги и карточки не используются. При
+            возврате в сборный режим они снова станут доступны.
+          </p>
+        </div>
+      )}
+
       <div className="admin-form">
-        <h3 className="section-title">{form.mode === 'single' ? 'Главное фото' : 'Обложка'}</h3>
+        <h3 className="section-title">{draft.mode === 'single' ? 'Главное фото' : 'Обложка'}</h3>
         <div className="admin-card-row">
           <div className="thumb">
-            {product.image_url ? <img src={mediaUrl(product.image_url)} alt={product.title} /> : null}
+            {product.image_url ? <img src={mediaUrl(product.image_url)} alt={draft.title} /> : null}
           </div>
           <div className="admin-card-info">
             <div>{product.image_url ? 'Главное фото загружено' : 'Главного фото нет'}</div>
@@ -297,7 +545,7 @@ export default function ProductEdit() {
         </div>
       </div>
 
-      {form.mode === 'single' && (
+      {draft.mode === 'single' && (
         <ProductGalleryEditor
           productId={productId}
           images={product.images}
@@ -315,14 +563,19 @@ export default function ProductEdit() {
         <div className="admin-actions">
           <button className="btn secondary" type="button" onClick={saveVideoUrl}>Сохранить ссылку</button>
           {product.video_url && (
-            <button className="icon-action red" type="button" onClick={() => { setVideoUrl(''); api.adminSetVideoUrl(productId, null).then(load); }}>
+            <button
+              className="icon-action red"
+              type="button"
+              onClick={() => {
+                setVideoUrl('');
+                api.adminSetVideoUrl(productId, null).then(load);
+              }}
+            >
               Очистить ссылку
             </button>
           )}
         </div>
-        <div className="admin-card-meta">
-          Файл приоритетнее ссылки: MP4, WebM или MOV, до 100 МБ.
-        </div>
+        <div className="admin-card-meta">Файл приоритетнее ссылки: MP4, WebM или MOV, до 100 МБ.</div>
         <div className="admin-actions">
           <label className="btn secondary">
             Загрузить видео
@@ -336,11 +589,21 @@ export default function ProductEdit() {
             <button className="icon-action red" type="button" onClick={deleteVideo}>Удалить видео</button>
           )}
         </div>
-        {product.video_file_url && <video className="admin-video-preview" src={mediaUrl(product.video_file_url)} controls preload="metadata" poster={mediaUrl(product.video_poster_url) || undefined} />}
+        {product.video_file_url && (
+          <video
+            className="admin-video-preview"
+            src={mediaUrl(product.video_file_url)}
+            controls
+            preload="metadata"
+            poster={mediaUrl(product.video_poster_url) || undefined}
+          />
+        )}
         {product.video_poster_url && (
           <div className="admin-actions">
             <span className="admin-muted">Постер загружен</span>
-            <button className="icon-action red" type="button" onClick={() => api.adminDeleteVideoPoster(productId).then(load)}>Сбросить постер</button>
+            <button className="icon-action red" type="button" onClick={() => api.adminDeleteVideoPoster(productId).then(load)}>
+              Сбросить постер
+            </button>
           </div>
         )}
       </div>
@@ -359,61 +622,11 @@ export default function ProductEdit() {
         </div>
       </div>
 
-      {form.mode === 'build' ? (
-        <div className="steps-editor">
-        <h3 className="section-title">Шаги и карточки</h3>
-        {steps.map((step, index) => (
-          <StepEditor
-            key={step.id}
-            step={step}
-            index={index}
-            total={steps.length}
-            onMove={moveStep}
-            onChanged={load}
-            onError={setError}
-          />
-        ))}
-        {steps.length === 0 && <div className="empty">Добавьте первый шаг — без него товар помечается «скоро».</div>}
-
-        <div className="admin-form">
-          <h4 className="section-title">Новый шаг</h4>
-          <div className="form-grid two">
-            <div className="field">
-              <label htmlFor="new-step-title">Название шага</label>
-              <input id="new-step-title" value={newStep.title} onChange={(event) => setNewStep({ ...newStep, title: event.target.value })} />
-            </div>
-            <div className="field">
-              <label htmlFor="new-step-mode">Выбор</label>
-              <select id="new-step-mode" value={newStep.mode} onChange={(event) => setNewStep({ ...newStep, mode: event.target.value as 'single' | 'multi' })}>
-                <option value="single">Один из вариантов</option>
-                <option value="multi">Можно несколько</option>
-              </select>
-            </div>
-          </div>
-          <label className="checkbox">
-            <input type="checkbox" checked={newStep.required} onChange={(event) => setNewStep({ ...newStep, required: event.target.checked })} />
-            Обязательный шаг
-          </label>
-          <div>
-            <button className="btn" type="button" onClick={addStep} disabled={!newStep.title.trim()}>Добавить шаг</button>
-          </div>
-        </div>
-      </div>
-      ) : (
-        <div className="admin-form">
-          <h3 className="section-title">Шаги и карточки</h3>
-          <p className="admin-muted">
-            Одиночный товар продаётся целиком: шаги и карточки не используются.
-            При возврате в сборный режим они снова станут доступны.
-          </p>
-        </div>
-      )}
-
       <div className="admin-form">
         <h3 className="section-title">Удаление товара</h3>
         <p className="admin-muted">
-          Товар удаляется из каталога и админки. История заказов сохранится
-          в снапшотах, поэтому старые заказы не пропадут.
+          Товар удаляется из каталога и админки. История заказов сохранится в снапшотах,
+          поэтому старые заказы не пропадут.
         </p>
         <div>
           <button className="btn danger" type="button" onClick={removeProduct}>
@@ -422,320 +635,6 @@ export default function ProductEdit() {
         </div>
       </div>
     </section>
-  );
-}
-
-function StepEditor({
-  step,
-  index,
-  total,
-  onMove,
-  onChanged,
-  onError,
-}: {
-  step: AdminStep;
-  index: number;
-  total: number;
-  onMove: (index: number, direction: -1 | 1) => void;
-  onChanged: () => void;
-  onError: (message: string) => void;
-}) {
-  const confirm = useConfirm();
-  const [cards, setCards] = useState<AdminCard[] | null>(null);
-  const [form, setForm] = useState({
-    title: step.title,
-    hint: step.hint || '',
-    selection_mode: step.selection_mode,
-    is_required: step.is_required,
-  });
-  const [newCard, setNewCard] = useState({ title: '', price: 0, max_qty: 10 });
-
-  function loadCards() {
-    api.adminCards(step.id).then(setCards).catch(() => onError('Не удалось загрузить карточки'));
-  }
-
-  useEffect(loadCards, [step.id]);
-
-  function saveStep() {
-    api.adminUpdateStep(step.id, {
-      title: form.title,
-      hint: form.hint,
-      selection_mode: form.selection_mode,
-      is_required: form.is_required,
-      is_active: step.is_active,
-    })
-      .then(() => {
-        onChanged();
-        onError('');
-      })
-      .catch((e) => onError(e?.response?.data?.detail || 'Не удалось сохранить шаг'));
-  }
-
-  async function removeStep() {
-    const ok = await confirm({
-      title: `Удалить шаг «${step.title}»?`,
-      text: 'Карточки этого шага тоже будут удалены.',
-      confirmLabel: 'Удалить',
-      danger: true,
-    });
-    if (!ok) return;
-    api.adminDeleteStep(step.id).then(onChanged).catch(() => onError('Не удалось удалить шаг'));
-  }
-
-  function addCard() {
-    if (!newCard.title.trim()) return;
-    api.adminCreateCard(step.id, { title: newCard.title.trim(), price: newCard.price, max_qty: newCard.max_qty })
-      .then(() => {
-        setNewCard({ title: '', price: 0, max_qty: 10 });
-        loadCards();
-        onChanged();
-      })
-      .catch((e) => onError(e?.response?.data?.detail || 'Не удалось добавить карточку'));
-  }
-
-  function moveCard(cardIndex: number, direction: -1 | 1) {
-    if (!cards) return;
-    const target = cardIndex + direction;
-    if (target < 0 || target >= cards.length) return;
-    const ids = cards.map((card) => card.id);
-    [ids[cardIndex], ids[target]] = [ids[target], ids[cardIndex]];
-    api.adminReorderCards(step.id, ids).then(loadCards).catch(() => onError('Не удалось изменить порядок карточек'));
-  }
-
-  return (
-    <div className="admin-step">
-      <div className="admin-row-head">
-        <div className="admin-row-title">
-          {step.title} {!step.is_active && <span className="pill-cancel">Скрыт</span>}
-        </div>
-        <div className="admin-actions">
-          <span className="admin-muted">{step.selection_mode === 'single' ? 'один' : 'несколько'}{step.is_required ? ' · обязательный' : ''}</span>
-          <button className="icon-action" type="button" onClick={() => onMove(index, -1)} disabled={index === 0} aria-label="Шаг выше">↑</button>
-          <button className="icon-action" type="button" onClick={() => onMove(index, 1)} disabled={index === total - 1} aria-label="Шаг ниже">↓</button>
-          <button className="icon-action" type="button" onClick={() => api.adminUpdateStep(step.id, { is_active: !step.is_active }).then(onChanged)}>
-            {step.is_active ? 'Скрыть' : 'Показать'}
-          </button>
-          <button className="icon-action red" type="button" onClick={removeStep}>
-            Удалить
-          </button>
-        </div>
-      </div>
-
-      <details>
-        <summary className="admin-muted">Настройки шага</summary>
-        <div className="admin-inline-form">
-          <div className="field">
-            <label>Название</label>
-            <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-          </div>
-          <div className="field">
-            <label>Подсказка</label>
-            <input value={form.hint} onChange={(event) => setForm({ ...form, hint: event.target.value })} />
-          </div>
-          <div className="field">
-            <label>Выбор</label>
-            <select value={form.selection_mode} onChange={(event) => setForm({ ...form, selection_mode: event.target.value as 'single' | 'multi' })}>
-              <option value="single">Один</option>
-              <option value="multi">Несколько</option>
-            </select>
-          </div>
-          <label className="checkbox">
-            <input type="checkbox" checked={form.is_required} onChange={(event) => setForm({ ...form, is_required: event.target.checked })} />
-            Обязательный
-          </label>
-          <button className="btn secondary" type="button" onClick={saveStep}>Сохранить шаг</button>
-        </div>
-      </details>
-
-      <div className="admin-cards">
-        {cards === null && <span className="admin-muted">Загрузка карточек…</span>}
-        {cards?.map((card, cardIndex) => (
-          <CardRow key={card.id} card={card} index={cardIndex} total={cards.length} onMove={moveCard} onChanged={() => { loadCards(); onChanged(); }} onError={onError} />
-        ))}
-        {cards?.length === 0 && <span className="admin-muted">Карточек нет.</span>}
-      </div>
-
-      <div className="admin-inline-form">
-        <div className="field">
-          <label>Новая карточка</label>
-          <input value={newCard.title} onChange={(event) => setNewCard({ ...newCard, title: event.target.value })} placeholder="30 × 40 см" />
-        </div>
-        <div className="field">
-          <label>Цена, ₽</label>
-          <input type="number" min={0} value={newCard.price} onChange={(event) => setNewCard({ ...newCard, price: Number(event.target.value) })} />
-        </div>
-        <div className="field">
-          <label>Макс. кол-во</label>
-          <input type="number" min={1} max={99} value={newCard.max_qty} onChange={(event) => setNewCard({ ...newCard, max_qty: Number(event.target.value) })} />
-        </div>
-        <button className="btn secondary" type="button" onClick={addCard} disabled={!newCard.title.trim()}>Добавить карточку</button>
-      </div>
-    </div>
-  );
-}
-
-function CardRow({
-  card,
-  index,
-  total,
-  onMove,
-  onChanged,
-  onError,
-}: {
-  card: AdminCard;
-  index: number;
-  total: number;
-  onMove: (index: number, direction: -1 | 1) => void;
-  onChanged: () => void;
-  onError: (message: string) => void;
-}) {
-  const confirm = useConfirm();
-  const [form, setForm] = useState({
-    title: card.title,
-    description: card.description || '',
-    price: card.price,
-    max_qty: card.max_qty,
-    is_active: card.is_active,
-  });
-
-  async function removeCard() {
-    const ok = await confirm({
-      title: `Удалить карточку «${card.title}»?`,
-      text: 'История уже отправленных заказов сохранится.',
-      confirmLabel: 'Удалить',
-      danger: true,
-    });
-    if (!ok) return;
-    api.adminDeleteCard(card.id).then(onChanged).catch(() => onError('Не удалось удалить карточку'));
-  }
-
-  function save() {
-    api.adminUpdateCard(card.id, form)
-      .then(onChanged)
-      .catch((e) => onError(e?.response?.data?.detail || 'Не удалось сохранить карточку'));
-  }
-
-  async function uploadImages(files: File[]) {
-    if (files.length === 0) return;
-    const remaining = MAX_CARD_IMAGES - card.images.length;
-    if (files.length > remaining) {
-      onError(`Можно добавить ещё ${remaining} фото`);
-      return;
-    }
-    for (const file of files) {
-      try {
-        await api.adminAddCardImage(card.id, file);
-      } catch (error) {
-        const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
-        onError(detail || 'Не удалось загрузить фото');
-        break;
-      }
-    }
-    onChanged();
-  }
-
-  async function removeImage(image: AdminCard['images'][number]) {
-    const ok = await confirm({
-      title: 'Удалить фото?',
-      text: `Фото будет удалено из карточки «${card.title}».`,
-      confirmLabel: 'Удалить',
-      danger: true,
-    });
-    if (!ok) return;
-    api.adminDeleteCardImage(card.id, image.id)
-      .then(onChanged)
-      .catch((e) => onError(e?.response?.data?.detail || 'Не удалось удалить фото'));
-  }
-
-  function moveImage(imageIndex: number, direction: -1 | 1) {
-    const target = imageIndex + direction;
-    if (target < 0 || target >= card.images.length) return;
-    const ids = card.images.map((image) => image.id);
-    [ids[imageIndex], ids[target]] = [ids[target], ids[imageIndex]];
-    api.adminReorderCardImages(card.id, ids)
-      .then(onChanged)
-      .catch((e) => onError(e?.response?.data?.detail || 'Не удалось изменить порядок фото'));
-  }
-
-  return (
-    <div>
-      <div className="admin-card-row">
-        <div className="thumb">{card.image_url ? <img src={mediaUrl(card.image_url)} alt={card.title} /> : null}</div>
-        <div className="admin-card-info">
-          <div>{card.title} {!card.is_active && <span className="pill-cancel">Скрыт</span>}</div>
-          <div className="admin-card-meta">{formatPrice(card.price)} · макс. {card.max_qty}</div>
-        </div>
-        <div className="admin-actions">
-          <button className="icon-action" type="button" onClick={() => onMove(index, -1)} disabled={index === 0} aria-label="Карточка выше">↑</button>
-          <button className="icon-action" type="button" onClick={() => onMove(index, 1)} disabled={index === total - 1} aria-label="Карточка ниже">↓</button>
-          <button className="icon-action red" type="button" onClick={removeCard}>
-            Удалить
-          </button>
-        </div>
-      </div>
-
-      <div className="admin-card-gallery">
-        {card.images.map((image, imageIndex) => (
-          <div className="admin-card-image" key={image.id}>
-            <div className="admin-card-image-media">
-              <img src={mediaUrl(image.url)} alt="" />
-              {imageIndex === 0 && <span className="admin-card-cover">Обложка</span>}
-            </div>
-            <div className="admin-actions">
-              <button className="icon-action" type="button" onClick={() => moveImage(imageIndex, -1)} disabled={imageIndex === 0} aria-label="Фото выше">↑</button>
-              <button className="icon-action" type="button" onClick={() => moveImage(imageIndex, 1)} disabled={imageIndex === card.images.length - 1} aria-label="Фото ниже">↓</button>
-              <button className="icon-action red" type="button" onClick={() => removeImage(image)} aria-label="Удалить фото">×</button>
-            </div>
-          </div>
-        ))}
-        {card.images.length < MAX_CARD_IMAGES && (
-          <label className="admin-card-add">
-            <span>+ Фото</span>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              hidden
-              onChange={(event) => {
-                const files = Array.from(event.target.files || []);
-                event.target.value = '';
-                void uploadImages(files);
-              }}
-            />
-          </label>
-        )}
-      </div>
-      <div className="admin-muted">
-        {card.images.length} из {MAX_CARD_IMAGES} · первое фото — обложка
-      </div>
-
-      <details>
-        <summary className="admin-muted">Редактировать карточку</summary>
-        <div className="admin-inline-form">
-          <div className="field">
-            <label>Название</label>
-            <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-          </div>
-          <div className="field">
-            <label>Описание</label>
-            <input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-          </div>
-          <div className="field">
-            <label>Цена, ₽</label>
-            <input type="number" min={0} value={form.price} onChange={(event) => setForm({ ...form, price: Number(event.target.value) })} />
-          </div>
-          <div className="field">
-            <label>Макс. кол-во</label>
-            <input type="number" min={1} max={99} value={form.max_qty} onChange={(event) => setForm({ ...form, max_qty: Number(event.target.value) })} />
-          </div>
-          <label className="checkbox">
-            <input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} />
-            Активна
-          </label>
-          <button className="btn secondary" type="button" onClick={save}>Сохранить</button>
-        </div>
-      </details>
-    </div>
   );
 }
 
@@ -811,9 +710,21 @@ function ProductGalleryEditor({
               {index === 0 && <span className="admin-card-cover">Обложка</span>}
             </div>
             <div className="admin-actions">
-              <button className="icon-action" type="button" onClick={() => moveImage(index, -1)} disabled={index === 0} aria-label="Фото выше">↑</button>
-              <button className="icon-action" type="button" onClick={() => moveImage(index, 1)} disabled={index === images.length - 1} aria-label="Фото ниже">↓</button>
-              <button className="icon-action red" type="button" onClick={() => void removeImage(image)} aria-label="Удалить фото">×</button>
+              <button className="icon-action" type="button" onClick={() => moveImage(index, -1)} disabled={index === 0} aria-label="Фото выше">
+                ↑
+              </button>
+              <button
+                className="icon-action"
+                type="button"
+                onClick={() => moveImage(index, 1)}
+                disabled={index === images.length - 1}
+                aria-label="Фото ниже"
+              >
+                ↓
+              </button>
+              <button className="icon-action red" type="button" onClick={() => void removeImage(image)} aria-label="Удалить фото">
+                ×
+              </button>
             </div>
           </div>
         ))}

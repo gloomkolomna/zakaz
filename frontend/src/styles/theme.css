@@ -2026,7 +2026,7 @@ a.brand:active {
 
 .admin-card-gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 8px;
   margin-top: 8px;
 }
@@ -2089,6 +2089,217 @@ a.brand:active {
 
 .admin-inline-form .field {
   flex: 1 1 120px;
+}
+
+.admin-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 4px 0 10px;
+}
+
+.admin-section-head .section-title {
+  margin: 0 0 4px;
+}
+
+.admin-section-head .btn {
+  flex: 0 0 auto;
+}
+
+.admin-entity-title {
+  margin: 0 0 4px;
+  font-family: var(--font-title);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.field.compact textarea {
+  min-height: 72px;
+}
+
+.admin-section-head p {
+  margin: 0;
+  max-width: 60ch;
+}
+
+.admin-form .admin-section-head {
+  margin: 0;
+}
+
+.save-status {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.save-status.is-error {
+  color: var(--red);
+  white-space: normal;
+}
+
+.step-list {
+  display: grid;
+  gap: 10px;
+}
+
+.step-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--sheet);
+}
+
+.step-row-link {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 14px;
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--radius-s);
+}
+
+.step-row-link:hover .step-row-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.step-row-index {
+  padding-top: 1px;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.step-row > .admin-actions {
+  padding-left: 10px;
+  border-left: 1px solid var(--line-soft);
+}
+
+.step-row-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.step-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.step-row-hint {
+  color: var(--ink-2);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.step-row-meta {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-row-go {
+  align-self: center;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.card-editors {
+  display: grid;
+  gap: 12px;
+}
+
+.card-editor {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--sheet);
+}
+
+.card-editor-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.card-editor-ident {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.card-editor-name {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.card-editor-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.card-editor-body {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.card-editor-photos {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.card-editor-subhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.new-card {
+  scroll-margin-top: 76px;
+}
+
+@media (max-width: 619px) {
+  .card-editor {
+    padding: 12px;
+  }
 }
 
 .admin-log-head {

@@ -116,6 +116,11 @@ export default function Product() {
     <main className="page">
       <BackLink to="/">Каталог</BackLink>
       <div className="page-product">
+        {product.is_hidden && (
+          <div className="preview-note">
+            Предпросмотр. Товар скрыт из каталога — покупатели его не видят.
+          </div>
+        )}
         <div className="product-head">
           <h1>
             {product.title}
@@ -143,7 +148,16 @@ export default function Product() {
 
           {product.is_early && <EarlyNote until={product.early_until} />}
 
-          {!ready ? (
+          {product.is_hidden ? (
+            <div className="blocked-cta">
+              <button className="btn block" type="button" disabled>
+                {isSingle ? 'Заказать' : 'Собрать заказ'}
+              </button>
+              <div className="blocked-note">
+                Заказ станет доступен после публикации товара и раздела.
+              </div>
+            </div>
+          ) : !ready ? (
             <div className="blocked-cta">
               <button className="btn block" type="button" disabled>
                 Скоро в продаже

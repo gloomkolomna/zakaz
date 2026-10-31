@@ -1652,6 +1652,17 @@ a.brand:active {
   margin-top: 18px;
 }
 
+.preview-note {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .blocked-note {
   margin-top: 8px;
   color: var(--ink-2);

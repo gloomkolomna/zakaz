@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 from deps import get_current_user
 from models import Product, Section, StepCard, User
-from services.catalog import from_price_map, visible_product, visible_steps
+from services.catalog import from_price_map, visible_steps
 from services.early import can_order, is_early
 from services.reserve import has_reservation
 from services.stock import is_sold_out, ordered_map
@@ -95,8 +95,11 @@ def product_detail(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    product = visible_product(db, product_id)
+    product = db.query(Product).filter(Product.id == product_id).first()
     if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар недоступен")
+    is_hidden = not product.is_active or not product.section.is_active
+    if is_hidden and user.role != "admin":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Товар недоступен")
 
     steps = visible_steps(product)
@@ -116,6 +119,7 @@ def product_detail(
         "stock": int(product.stock or 0),
         "sold_out": is_sold_out(product, ordered),
         "reserved": has_reservation(db, product.id, user.vk_id),
+        "is_hidden": is_hidden,
         "video": {
             "url": product.video_url,
             "file_url": product.video_file_url,

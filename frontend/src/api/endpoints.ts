@@ -88,6 +88,7 @@ export interface ProductDetail {
   stock: number;
   sold_out: boolean;
   reserved: boolean;
+  is_hidden: boolean;
   video: Video | null;
   early_until: string | null;
   is_early: boolean;

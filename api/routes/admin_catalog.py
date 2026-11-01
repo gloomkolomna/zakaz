@@ -13,7 +13,7 @@ from models import Order, OrderItem, Product, ProductImage, ProductStep, Section
 from services.catalog import filled_steps, from_price_map
 from services.early import is_early
 from services.stock import is_sold_out, ordered_map
-from services.uploads import remove_upload, save_image, save_video
+from services.uploads import remove_upload_unreferenced, save_image, save_video
 
 router = APIRouter(prefix="/api/admin", tags=["admin-catalog"])
 
@@ -295,16 +295,16 @@ def _has_orders(db: Session, product_id: int) -> bool:
     )
 
 
-def _remove_product_files(product: Product) -> None:
-    remove_upload(product.image_url)
-    remove_upload(product.video_file_url)
-    remove_upload(product.video_poster_url)
+def _remove_product_files(db, product: Product) -> None:
+    remove_upload_unreferenced(db, product.image_url)
+    remove_upload_unreferenced(db, product.video_file_url)
+    remove_upload_unreferenced(db, product.video_poster_url)
     for image in product.images:
-        remove_upload(image.image_url)
+        remove_upload_unreferenced(db, image.image_url)
     for step in product.steps:
         for card in step.cards:
             for image in card.images:
-                remove_upload(image.image_url)
+                remove_upload_unreferenced(db, image.image_url)
 
 
 def _detach_orders(db, product: Product) -> None:
@@ -394,7 +394,7 @@ def delete_section(section_id: int, db: Session = Depends(get_db), user: User = 
     row = _section(db, section_id)
     for product in row.products:
         if not _has_orders(db, product.id):
-            _remove_product_files(product)
+            _remove_product_files(db, product)
         _detach_orders(db, product)
     db.delete(row)
     db.commit()
@@ -512,7 +512,7 @@ def delete_product(product_id: int, db: Session = Depends(get_db), user: User = 
     has_orders = _has_orders(db, product_id)
     _detach_orders(db, row)
     if not has_orders:
-        _remove_product_files(row)
+        _remove_product_files(db, row)
     db.delete(row)
     db.commit()
     return {"ok": True, "mode": "deleted"}
@@ -527,7 +527,7 @@ def upload_product_image(
 ):
     row = _product(db, product_id)
     url = save_image(file, "product", 1400)
-    remove_upload(row.image_url)
+    remove_upload_unreferenced(db, row.image_url)
     row.image_url = url
     db.commit()
     return {"url": url}
@@ -536,7 +536,7 @@ def upload_product_image(
 @router.delete("/products/{product_id}/image")
 def delete_product_image(product_id: int, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     row = _product(db, product_id)
-    remove_upload(row.image_url)
+    remove_upload_unreferenced(db, row.image_url)
     row.image_url = None
     db.commit()
     return {"ok": True}
@@ -579,7 +579,7 @@ def delete_product_gallery_image(
     )
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Фото не найдено")
-    remove_upload(image.image_url)
+    remove_upload_unreferenced(db, image.image_url)
     db.delete(image)
     db.commit()
     remaining = (
@@ -628,7 +628,7 @@ def upload_product_video(
 ):
     row = _product(db, product_id)
     url = save_video(file, "video")
-    remove_upload(row.video_file_url)
+    remove_upload_unreferenced(db, row.video_file_url)
     row.video_file_url = url
     db.commit()
     return {"url": url}
@@ -650,7 +650,7 @@ def set_product_video_url(
 @router.delete("/products/{product_id}/video")
 def delete_product_video(product_id: int, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     row = _product(db, product_id)
-    remove_upload(row.video_file_url)
+    remove_upload_unreferenced(db, row.video_file_url)
     row.video_file_url = None
     row.video_url = None
     db.commit()
@@ -666,7 +666,7 @@ def upload_video_poster(
 ):
     row = _product(db, product_id)
     url = save_image(file, "video_poster", 1600)
-    remove_upload(row.video_poster_url)
+    remove_upload_unreferenced(db, row.video_poster_url)
     row.video_poster_url = url
     db.commit()
     return {"url": url}
@@ -675,7 +675,7 @@ def upload_video_poster(
 @router.delete("/products/{product_id}/video-poster")
 def delete_video_poster(product_id: int, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))):
     row = _product(db, product_id)
-    remove_upload(row.video_poster_url)
+    remove_upload_unreferenced(db, row.video_poster_url)
     row.video_poster_url = None
     db.commit()
     return {"ok": True}
@@ -780,7 +780,7 @@ def delete_step(step_id: int, db: Session = Depends(get_db), user: User = Depend
     db.delete(row)
     db.commit()
     for url in image_urls:
-        remove_upload(url)
+        remove_upload_unreferenced(db, url)
     return {"ok": True}
 
 
@@ -870,7 +870,7 @@ def delete_card(card_id: int, db: Session = Depends(get_db), user: User = Depend
     db.delete(row)
     db.commit()
     for url in image_urls:
-        remove_upload(url)
+        remove_upload_unreferenced(db, url)
     return {"ok": True}
 
 
@@ -911,7 +911,7 @@ def delete_card_image(
     )
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Фото не найдено")
-    remove_upload(image.image_url)
+    remove_upload_unreferenced(db, image.image_url)
     db.delete(image)
     db.commit()
     remaining = (

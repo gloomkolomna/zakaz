@@ -161,3 +161,11 @@ def remove_upload(url: str | None) -> None:
             os.remove(path)
         except OSError:
             pass
+
+
+def remove_upload_unreferenced(db, url: str | None) -> None:
+    from models import OrderItem
+
+    if url and db.query(OrderItem.id).filter(OrderItem.image_url == url).first() is not None:
+        return
+    remove_upload(url)

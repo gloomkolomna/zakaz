@@ -7,8 +7,9 @@ from models import User
 from services.vk_sign import _calc_sign
 
 
-def _signed_params(vk_user_id: int) -> dict:
-    params = {"vk_user_id": str(vk_user_id), "vk_app_id": "777"}
+def _signed_params(vk_user_id: int, vk_ts: int | None = None) -> dict:
+    timestamp = vk_ts if vk_ts is not None else int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+    params = {"vk_user_id": str(vk_user_id), "vk_app_id": "777", "vk_ts": str(timestamp)}
     pairs = sorted((k, v) for k, v in params.items())
     query = "&".join(f"{k}={v}" for k, v in pairs)
     params["sign"] = _calc_sign(query)
@@ -79,6 +80,35 @@ def test_session_correct_signature(client, monkeypatch):
     resp = client.post("/api/auth/session", json={"params": _signed_params(123)})
     assert resp.status_code == 200
     assert resp.json()["vk_id"] == 123
+
+
+def test_session_demotes_removed_admin(client, db, monkeypatch):
+    db.add(User(vk_id=400977, role="admin"))
+    db.commit()
+    monkeypatch.setattr(config, "ADMIN_VK_IDS", set())
+
+    resp = client.post("/api/auth/session", json={"params": {"vk_user_id": 400977}})
+
+    assert resp.status_code == 200
+    assert resp.json()["role"] == "player"
+    assert db.query(User).filter(User.vk_id == 400977).first().role == "player"
+
+
+def test_session_rejects_stale_vk_timestamp(client, monkeypatch):
+    monkeypatch.setattr(config, "DEV_LOGIN_ENABLED", False)
+    timestamp = int((datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=2)).timestamp())
+    resp = client.post("/api/auth/session", json={"params": _signed_params(123, timestamp)})
+    assert resp.status_code == 401
+
+
+def test_session_requires_vk_timestamp(client, monkeypatch):
+    monkeypatch.setattr(config, "DEV_LOGIN_ENABLED", False)
+    params = _signed_params(123)
+    del params["vk_ts"]
+    pairs = sorted((k, v) for k, v in params.items() if k != "sign")
+    params["sign"] = _calc_sign("&".join(f"{k}={v}" for k, v in pairs))
+    resp = client.post("/api/auth/session", json={"params": params})
+    assert resp.status_code == 401
 
 
 def test_session_wrong_signature(client, monkeypatch):

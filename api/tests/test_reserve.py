@@ -99,3 +99,19 @@ def test_admin_reserve_list_and_signal(player_client, db):
 def test_admin_reserve_forbidden_for_player(player_client):
     assert player_client.get("/api/admin/reserve").status_code == 403
     assert player_client.delete("/api/admin/reserve/1").status_code == 403
+
+
+def test_reserve_is_not_available_when_section_is_hidden(player_client, db):
+    product, card = _shop(db)
+    order = _order(player_client, product, card)
+    with make_user_client(124) as other:
+        other.post(f"/api/products/{product.id}/reserve")
+    player_client.post(f"/api/orders/{order.json()['id']}/cancel")
+
+    product.section.is_active = False
+    db.commit()
+
+    with make_user_client(400977, "admin") as admin:
+        item = admin.get("/api/admin/reserve").json()["items"][0]
+    assert item["available"] is False
+    assert item["section_is_active"] is False

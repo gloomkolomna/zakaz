@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import time
 from typing import Optional
 
 import config
@@ -38,6 +39,13 @@ def verify_launch_params(params: dict) -> Optional[int]:
     calculated = _calc_sign(query)
 
     if hmac.compare_digest(calculated, sign):
+        try:
+            issued_at = int(params.get("vk_ts", ""))
+        except (ValueError, TypeError):
+            return None
+        now = int(time.time())
+        if issued_at > now + 60 or now - issued_at > config.VK_LAUNCH_PARAMS_TTL_SECONDS:
+            return None
         vk_id = params.get("vk_user_id")
         try:
             return int(vk_id) if vk_id else None

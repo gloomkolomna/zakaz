@@ -388,3 +388,74 @@ def test_order_queue_positions_and_compression(player_client, db):
         assert second.get(f"/api/orders/{second_id}").json()["queue_position"] == 1
     with make_user_client(125) as third:
         assert third.get(f"/api/orders/{third_id}").json()["queue_position"] == 2
+
+
+def test_concurrent_orders_preserve_stock_and_queue(tmp_path):
+    import threading
+
+    from fastapi import HTTPException
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.pool import NullPool
+
+    from models import Base, User
+    from routes.orders import OrderIn, create_order
+
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'orders.db'}",
+        connect_args={"check_same_thread": False, "timeout": 5},
+        poolclass=NullPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def set_pragmas(connection, _record):
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine, autoflush=False)
+    db = sessions()
+    section = make_section(db)
+    product = make_product(db, section, stock=1)
+    step = make_step(db, product, is_required=True)
+    card = make_card(db, step, price=1000)
+    db.add_all([User(vk_id=101, role="admin"), User(vk_id=102, role="admin")])
+    db.commit()
+    product_id = product.id
+    card_id = card.id
+    db.close()
+
+    barrier = threading.Barrier(2)
+    results = []
+
+    def worker(vk_id):
+        session = sessions()
+        try:
+            barrier.wait()
+            create_order(
+                OrderIn(product_id=product_id, items=[{"card_id": card_id, "qty": 1}]),
+                session,
+                session.get(User, vk_id),
+            )
+            results.append(201)
+        except HTTPException as exc:
+            session.rollback()
+            results.append(exc.status_code)
+        finally:
+            session.close()
+
+    threads = [threading.Thread(target=worker, args=(vk_id,)) for vk_id in (101, 102)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    db = sessions()
+    orders = db.query(Order).all()
+    assert sorted(results) == [201, 409]
+    assert len(orders) == 1
+    assert [order.queue_order for order in orders] == [1]
+    db.close()
+    engine.dispose()

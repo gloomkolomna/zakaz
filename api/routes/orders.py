@@ -90,6 +90,9 @@ def _own_order(db: Session, order_id: int, user: User) -> Order:
 
 @router.post("/orders", status_code=status.HTTP_201_CREATED)
 def create_order(data: OrderIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if db.get_bind().dialect.name == "sqlite":
+        db.rollback()
+        db.connection().exec_driver_sql("BEGIN IMMEDIATE")
     product = db.query(Product).filter(Product.id == data.product_id).first()
     if product is None or not product.is_active or not product.section.is_active:
         _bad("Товар недоступен")

@@ -109,6 +109,25 @@ def test_order_snapshot_uses_first_card_image(
     assert response.json()["items"][0]["image_url"] == first.json()["url"]
 
 
+def test_order_snapshot_image_survives_card_delete(admin_client, db, tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "UPLOADS_DIR", str(tmp_path))
+    product, _, card = _shop(db)
+    uploaded = _upload(admin_client, card.id)
+    url = uploaded.json()["url"]
+
+    with make_user_client(123) as player:
+        order = player.post(
+            "/api/orders",
+            json={"product_id": product.id, "items": [{"card_id": card.id, "qty": 1}]},
+        ).json()
+
+    assert admin_client.delete(f"/api/admin/cards/{card.id}").status_code == 200
+    assert (tmp_path / url.rsplit("/", 1)[-1]).exists()
+    with make_user_client(123) as player:
+        saved = player.get(f"/api/orders/{order['id']}").json()
+    assert saved["items"][0]["image_url"] == url
+
+
 def test_card_images_validation_and_permissions(
     admin_client, db, tmp_path, monkeypatch
 ):

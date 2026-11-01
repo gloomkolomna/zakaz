@@ -52,12 +52,13 @@ def create_session(req: SessionRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     else:
-        if user.role != "admin" and user.status == "blocked":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Аккаунт заблокирован")
-        if is_admin and user.role != "admin":
-            user.role = "admin"
+        target_role = "admin" if is_admin else "player" if user.role == "admin" else user.role
+        if user.role != target_role:
+            user.role = target_role
             db.commit()
             db.refresh(user)
+        if user.role != "admin" and user.status == "blocked":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Аккаунт заблокирован")
 
     if not user.display_name:
         try:

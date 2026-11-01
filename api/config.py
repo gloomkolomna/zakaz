@@ -41,6 +41,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:5177")
 
 VK_APP_ID = _env_int("VK_APP_ID", 0)
 VK_APP_SECRET = os.getenv("VK_APP_SECRET", "")
+VK_LAUNCH_PARAMS_TTL_SECONDS = _env_int("VK_LAUNCH_PARAMS_TTL_SECONDS", 3600)
 VK_SERVICE_TOKEN = os.getenv("VK_SERVICE_TOKEN", "")
 VK_GROUP_ID = _env_int("VK_GROUP_ID", 0)
 ADMIN_VK_IDS = _env_list_int("ADMIN_VK_IDS")

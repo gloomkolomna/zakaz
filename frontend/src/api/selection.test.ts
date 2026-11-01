@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildItems,
   canSubmit,
+  normalizeSelection,
   selectionTotal,
   setQty,
   stepHasSelection,
@@ -68,5 +69,10 @@ describe('selection', () => {
       { card_id: 11, qty: 1 },
       { card_id: 22, qty: 2 },
     ]);
+  });
+
+  it('удаляет скрытые карточки и ограничивает количество из черновика', () => {
+    expect(normalizeSelection({ 11: 99, 21: 2, 999: 1 }, steps)).toEqual({ 11: 2, 21: 2 });
+    expect(normalizeSelection({ 999: 1 }, steps)).toEqual({});
   });
 });

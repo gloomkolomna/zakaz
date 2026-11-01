@@ -7,6 +7,7 @@ import {
   type AdminOrdersResponse,
   type AdminProduct,
   type AdminSection,
+  type OrderBrief,
   type OrderFilters,
   type OrderStatus,
 } from '../../api/endpoints';
@@ -19,6 +20,7 @@ const LIMIT = 20;
 
 export default function OrdersTab() {
   const [data, setData] = useState<AdminOrdersResponse | null>(null);
+  const [activeCancellations, setActiveCancellations] = useState<OrderBrief[]>([]);
   const [sections, setSections] = useState<AdminSection[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [searchParams] = useSearchParams();
@@ -56,10 +58,14 @@ export default function OrdersTab() {
     const id = ++requestId.current;
     if (!silent) setLoading(true);
     setError(null);
-    return api.adminOrders(filters)
-      .then((rows) => {
+    return Promise.all([
+      api.adminOrders(filters),
+      api.adminOrders({ cancel_unread: 1, limit: 200 }),
+    ])
+      .then(([rows, cancellations]) => {
         if (id !== requestId.current) return;
         setData(rows);
+        setActiveCancellations(cancellations.items);
         setLastUpdated(new Date());
       })
       .catch(() => {
@@ -134,10 +140,6 @@ export default function OrdersTab() {
   function cancelSeen(id: number) {
     api.adminCancelSeen(id).then(reload).catch(() => setError('Не удалось подтвердить отмену'));
   }
-
-  const activeCancellations = (data?.items || []).filter(
-    (item) => item.status === 'cancelled' && !item.cancel_seen_at,
-  );
 
   if (loading && !data) return <Skeleton lines={5} />;
 

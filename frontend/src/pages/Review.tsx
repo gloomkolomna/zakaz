@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, type Card, type ProductDetail } from '../api/endpoints';
-import { buildItems, removeCard, selectionCount, selectionTotal, setQty, stepHasSelection, toggleCard, type Selected } from '../api/selection';
+import { buildItems, normalizeSelection, removeCard, selectionTotal, setQty, stepHasSelection, toggleCard, type Selected } from '../api/selection';
 import { clearDraft, readDraft, writeDraft } from '../api/draft';
 import { formatPrice } from '../api/money';
 import { mediaUrl } from '../api/media';
@@ -27,7 +27,11 @@ export default function Review() {
     setSelected(readDraft(productId));
     api.product(productId)
       .then((data) => {
-        if (!cancelled) setProduct(data);
+        if (cancelled) return;
+        const next = normalizeSelection(readDraft(productId), data.steps);
+        setSelected(next);
+        writeDraft(productId, next);
+        setProduct(data);
       })
       .catch(() => {
         if (!cancelled) setError('Не удалось загрузить товар');
@@ -44,7 +48,7 @@ export default function Review() {
   const total = useMemo(() => selectionTotal(selected, steps), [selected, steps]);
   const groups = steps.filter((step) => stepHasSelection(selected, step));
   const missing = steps.filter((step) => step.is_required && !stepHasSelection(selected, step));
-  const count = selectionCount(selected);
+  const count = buildItems(selected, steps).length;
   const editableStep = steps.find((step) => step.id === sheetStep) || null;
 
   function apply(next: Selected) {

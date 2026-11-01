@@ -10,6 +10,7 @@ interface ReserveGroup {
   product_id: number;
   product_title: string;
   product_is_active: boolean;
+  section_is_active: boolean;
   stock: number;
   ordered_count: number;
   available: boolean;
@@ -28,6 +29,7 @@ function groupReserve(items: AdminReserveItem[]): ReserveGroup[] {
         product_id: item.product_id,
         product_title: item.product_title,
         product_is_active: item.product_is_active,
+        section_is_active: item.section_is_active,
         stock: item.stock,
         ordered_count: item.ordered_count,
         available: item.available,
@@ -140,7 +142,7 @@ export default function ReserveTab() {
                 <div className="admin-row-head">
                   <div className="admin-row-title">
                     {group.product_title}{' '}
-                    {!group.product_is_active && <span className="pill-draft">Скрыт</span>}
+                    {(!group.product_is_active || !group.section_is_active) && <span className="pill-draft">Скрыт</span>}
                     {group.available ? (
                       <span className="pill-cancel">Есть место</span>
                     ) : (

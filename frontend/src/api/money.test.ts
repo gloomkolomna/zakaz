@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatEarlyUntil, formatPrice } from './money';
+import { formatDate, formatEarlyUntil, formatPrice, parseApiDate } from './money';
 
 describe('money', () => {
   it('форматирует целые рубли', () => {
@@ -15,5 +15,10 @@ describe('money', () => {
   it('переводит дату в московское время', () => {
     expect(formatDate('2026-10-26T06:20:00Z')).toBe('26 октября, 09:20');
     expect(formatEarlyUntil('2026-10-29T12:00:00Z')).toBe('Откроется 29 октября в 15:00');
+  });
+
+  it('разбирает даты API без смещения как UTC', () => {
+    expect(parseApiDate('2026-10-26T06:20:00').toISOString()).toBe('2026-10-26T06:20:00.000Z');
+    expect(formatDate('2026-10-26T06:20:00')).toBe('26 октября, 09:20');
   });
 });

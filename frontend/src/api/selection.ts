@@ -62,6 +62,17 @@ export function selectionTotal(selected: Selected, steps: SelectableStep[]): num
   return steps.reduce((sum, step) => sum + stepTotal(selected, step), 0);
 }
 
+export function normalizeSelection(selected: Selected, steps: SelectableStep[]): Selected {
+  const next: Selected = {};
+  for (const step of steps) {
+    for (const card of step.cards) {
+      const qty = selected[card.id];
+      if (qty > 0) next[card.id] = Math.min(Math.floor(qty), card.max_qty);
+    }
+  }
+  return next;
+}
+
 export function selectionCount(selected: Selected): number {
   return Object.values(selected).filter((qty) => qty > 0).length;
 }

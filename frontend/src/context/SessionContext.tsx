@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { clearToken, getToken, saveToken } from '../api/client';
 import { api, type MeUser } from '../api/endpoints';
+import { matchesVkSession } from '../api/session';
 import { useVkBridge } from './VkBridgeContext';
 
 interface SessionState {
@@ -59,11 +60,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (token) {
           try {
             const me = await api.me();
-            if (!cancelled) {
-              setUser(me);
-              setLoading(false);
+            if (matchesVkSession(me.vk_id, vkUserId)) {
+              if (!cancelled) {
+                setUser(me);
+                setLoading(false);
+              }
+              return;
             }
-            return;
+            if (cancelled) return;
+            clearToken();
+            setToken(null);
           } catch (e: any) {
             if (e?.response?.status === 403) throw e;
             clearToken();

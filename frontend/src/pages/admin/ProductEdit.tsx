@@ -8,6 +8,7 @@ import {
   type ProductMode,
 } from '../../api/endpoints';
 import { formatEarlyUntil } from '../../api/money';
+import { productModePayload } from '../../api/productMode';
 import { mediaUrl } from '../../api/media';
 import { plural } from '../../api/plural';
 import BackLink from '../../components/BackLink';
@@ -153,8 +154,16 @@ export default function ProductEdit() {
       });
       if (!ok) return;
     }
-    update({ mode });
-    commit({ mode }, { ...draft, mode });
+    let patch: { mode: ProductMode; price?: number };
+    try {
+      patch = productModePayload(mode, draft.price);
+    } catch (cause) {
+      setSave(saveError(cause instanceof Error ? cause.message : 'Не удалось сохранить товар'));
+      return;
+    }
+    const next = { ...draft, mode, ...(patch.price !== undefined ? { price: String(patch.price) } : {}) };
+    update(next);
+    commit(patch, next);
   }
 
   function savePrice() {

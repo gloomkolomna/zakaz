@@ -208,6 +208,7 @@ export interface AdminReserveItem {
   product_title: string;
   product_image_url: string | null;
   product_is_active: boolean;
+  section_is_active: boolean;
   stock: number;
   ordered_count: number;
   sold_out: boolean;

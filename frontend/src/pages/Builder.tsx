@@ -4,7 +4,7 @@ import { api, type Card, type ProductDetail } from '../api/endpoints';
 import { readDraft, writeDraft } from '../api/draft';
 import { formatPrice } from '../api/money';
 import { mediaUrl } from '../api/media';
-import { selectedInStep, selectionTotal, setQty, toggleCard, type Selected } from '../api/selection';
+import { normalizeSelection, selectedInStep, selectionTotal, setQty, toggleCard, type Selected } from '../api/selection';
 import BackLink from '../components/BackLink';
 import CardGallery from '../components/CardGallery';
 import Skeleton from '../components/Skeleton';
@@ -27,7 +27,11 @@ export default function Builder() {
     setLoading(true);
     api.product(productId)
       .then((data) => {
-        if (!cancelled) setProduct(data);
+        if (cancelled) return;
+        const next = normalizeSelection(readDraft(productId), data.steps);
+        setSelected(next);
+        writeDraft(productId, next);
+        setProduct(data);
       })
       .catch((e) => {
         if (!cancelled) setError(e?.response?.status === 404 ? 'Товар недоступен' : 'Не удалось загрузить товар');

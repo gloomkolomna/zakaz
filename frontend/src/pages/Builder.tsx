@@ -6,9 +6,9 @@ import { formatPrice } from '../api/money';
 import { mediaUrl } from '../api/media';
 import { normalizeSelection, selectedInStep, selectionTotal, setQty, toggleCard, type Selected } from '../api/selection';
 import BackLink from '../components/BackLink';
-import CardGallery from '../components/CardGallery';
+import PickCard from '../components/PickCard';
 import Skeleton from '../components/Skeleton';
-import Stepper from '../components/Stepper';
+import ZoomModal from '../components/ZoomModal';
 
 export default function Builder() {
   const { id } = useParams();
@@ -57,13 +57,11 @@ export default function Builder() {
   }
 
   function chooseCard(card: Card) {
-    const active = Boolean(selected[card.id]);
     apply(toggleCard(selected, step, card));
-    setGalleryCardId(active ? null : card.id);
   }
 
   function viewCard(card: Card) {
-    setGalleryCardId(card.id);
+    if (card.images.length > 0) setGalleryCardId(card.id);
   }
 
   function goNext() {
@@ -156,63 +154,30 @@ export default function Builder() {
         {step.cards.map((card) => {
           const active = Boolean(selected[card.id]);
           return (
-            <div
+            <PickCard
               key={card.id}
-              className="pick"
-              role="button"
-              tabIndex={0}
-              aria-pressed={active}
-              onClick={() => chooseCard(card)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  chooseCard(card);
-                }
-              }}
-            >
-              <div className="pick-media">
-                {card.image_url ? (
-                  <img src={mediaUrl(card.image_url)} alt={card.title} loading="lazy" />
-                ) : (
-                  <span className="image-placeholder">Фото</span>
-                )}
-                {card.images.length > 0 && (
-                  <button
-                    className="pick-photo"
-                    type="button"
-                    aria-label={`Фото: ${card.title}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      viewCard(card);
-                    }}
-                    onKeyDown={(event) => event.stopPropagation()}
-                  >
-                    Фото
-                  </button>
-                )}
-              </div>
-              <div className="pick-body">
-                <div className="pick-name">{card.title}</div>
-                <div className="pick-price">{formatPrice(card.price)}</div>
-              </div>
-              <span className="pick-check" aria-hidden="true">
-                ✓
-              </span>
-              {active && (
-                <Stepper
-                  mini
-                  value={selected[card.id]}
-                  max={card.max_qty}
-                  onChange={(value) => apply(setQty(selected, card.id, value, card.max_qty))}
-                />
-              )}
-            </div>
+              card={card}
+              active={active}
+              quantity={selected[card.id]}
+              onToggle={() => chooseCard(card)}
+              onView={() => viewCard(card)}
+              onQuantityChange={(value) => apply(setQty(selected, card.id, value, card.max_qty))}
+            />
           );
         })}
       </div>
 
       {galleryCard && (
-        <CardGallery key={galleryCard.id} title={galleryCard.title} images={galleryCard.images} />
+        <ZoomModal
+          key={galleryCard.id}
+          src={mediaUrl(galleryCard.images[0].url)}
+          alt={`${galleryCard.title} — фото 1`}
+          images={galleryCard.images.map((image, index) => ({
+            url: mediaUrl(image.url),
+            alt: `${galleryCard.title} — фото ${index + 1}`,
+          }))}
+          onClose={() => setGalleryCardId(null)}
+        />
       )}
 
       <div className="bar">

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Шаг — строки</title>
+<link rel="stylesheet" href="../../../frontend/src/styles/theme.css">
+<link rel="stylesheet" href="preview.css">
+<style>
+  .zoom-modal[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <a class="brand" href="#">
+      <img class="brand-logo" src="../../../frontend/public/logo.png" width="38" height="38" alt="">
+      <span>Магазин игр</span>
+    </a>
+    <button class="icon-btn" type="button" aria-label="Меню">
+      <span class="menu-glyph" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+  </header>
+
+  <main class="page page-builder">
+    <a class="back-link" href="#"><span aria-hidden="true">←</span> К товару</a>
+
+    <div class="step-head">
+      <h1>Декор</h1>
+      <div class="step-meta">
+        <span>Шаг 2 из 3</span>
+        <span class="crosses" aria-hidden="true">
+          <span class="done">✕</span>
+          <span class="current">✕</span>
+          <span>✕</span>
+        </span>
+      </div>
+      <div class="hint">Можно выбрать несколько</div>
+    </div>
+
+    <div class="picks picks-rows" data-base="1250">
+      <div class="pick-row is-selected" role="button" tabindex="0" aria-pressed="true">
+        <button class="pick-thumb" type="button" aria-label="Фото: Роза, 2 штуки"
+          data-title="Роза"
+          data-images="img/rose.jpg,img/sage.jpg">
+          <img src="img/rose.jpg" alt="">
+          <span class="pick-thumb-badge" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M7 1h4v4M5 11H1V7M11 1 7 5M1 11l4-4"/></svg>
+          </span>
+        </button>
+        <div class="pick-main">
+          <span class="pick-name">Роза</span>
+          <span class="pick-description">Вышивка на деревянной основе, диаметр 8 см</span>
+          <span class="pick-price"><span data-price="120">120 ₽</span></span>
+          <span class="pick-check" aria-hidden="true">
+            <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2 4.8 9 10 3.4"/></svg>
+          </span>
+        </div>
+        <div class="pick-qty">
+          <span class="stepper">
+            <button type="button" aria-label="Уменьшить количество" data-step="-1">−</button>
+            <span class="qty">2</span>
+            <button type="button" aria-label="Увеличить количество" data-step="1">+</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="pick-row" role="button" tabindex="0" aria-pressed="false">
+        <button class="pick-thumb" type="button" aria-label="Фото: Шалфей, 1 фото"
+          data-title="Шалфей"
+          data-images="img/sage.jpg">
+          <img src="img/sage.jpg" alt="">
+          <span class="pick-thumb-badge" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M7 1h4v4M5 11H1V7M11 1 7 5M1 11l4-4"/></svg>
+          </span>
+        </button>
+        <div class="pick-main">
+          <span class="pick-name">Шалфей</span>
+          <span class="pick-price"><span data-price="140">140 ₽</span></span>
+          <span class="pick-check" aria-hidden="true">
+            <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2 4.8 9 10 3.4"/></svg>
+          </span>
+        </div>
+        <div class="pick-qty" hidden>
+          <span class="stepper">
+            <button type="button" aria-label="Уменьшить количество" data-step="-1">−</button>
+            <span class="qty">1</span>
+            <button type="button" aria-label="Увеличить количество" data-step="1">+</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="pick-row is-selected" role="button" tabindex="0" aria-pressed="true">
+        <button class="pick-thumb" type="button" aria-label="Фото: Графит, 3 фото"
+          data-title="Графит"
+          data-images="img/graphite.jpg,img/red.jpg,img/ochre.jpg">
+          <img src="img/graphite.jpg" alt="">
+          <span class="pick-thumb-badge" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M7 1h4v4M5 11H1V7M11 1 7 5M1 11l4-4"/></svg>
+          </span>
+        </button>
+        <div class="pick-main">
+          <span class="pick-name">Графит</span>
+          <span class="pick-price"><span data-price="150">150 ₽</span></span>
+          <span class="pick-check" aria-hidden="true">
+            <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2 4.8 9 10 3.4"/></svg>
+          </span>
+        </div>
+        <div class="pick-qty">
+          <span class="stepper">
+            <button type="button" aria-label="Уменьшить количество" data-step="-1">−</button>
+            <span class="qty">1</span>
+            <button type="button" aria-label="Увеличить количество" data-step="1">+</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="pick-row" role="button" tabindex="0" aria-pressed="false">
+        <button class="pick-thumb" type="button" aria-label="Фото: Охра, 2 фото"
+          data-title="Охра"
+          data-images="img/ochre.jpg,img/kraft.jpg">
+          <img src="img/ochre.jpg" alt="">
+          <span class="pick-thumb-badge" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M7 1h4v4M5 11H1V7M11 1 7 5M1 11l4-4"/></svg>
+          </span>
+        </button>
+        <div class="pick-main">
+          <span class="pick-name">Охра</span>
+          <span class="pick-price"><span data-price="130">130 ₽</span></span>
+          <span class="pick-check" aria-hidden="true">
+            <svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.2 4.8 9 10 3.4"/></svg>
+          </span>
+        </div>
+        <div class="pick-qty" hidden>
+          <span class="stepper">
+            <button type="button" aria-label="Уменьшить количество" data-step="-1">−</button>
+            <span class="qty">1</span>
+            <button type="button" aria-label="Увеличить количество" data-step="1">+</button>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bar">
+      <button class="skip" type="button">Пропустить</button>
+      <button class="btn" type="button">К заказу · <span class="bar-total">1 640 ₽</span></button>
+    </div>
+  </main>
+</div>
+
+<div class="modal zoom-modal" id="zoom" hidden>
+  <button class="zoom-close" type="button" aria-label="Закрыть">×</button>
+  <div class="zoom-stage">
+    <button class="zoom-nav prev" type="button" aria-label="Предыдущее фото">‹</button>
+    <img id="zoom-img" src="img/rose.jpg" alt="Роза — фото 1">
+    <button class="zoom-nav next" type="button" aria-label="Следующее фото">›</button>
+    <div class="zoom-footer">
+      <div class="zoom-counter">1 / 2</div>
+      <div class="zoom-thumbs" role="group" aria-label="Все фото"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const rows = [...document.querySelectorAll('.pick-row')];
+  const base = Number(document.querySelector('.picks').dataset.base);
+  const totalNode = document.querySelector('.bar-total');
+
+  function format(value) {
+    return value.toLocaleString('ru-RU').replace(/\u00a0/g, ' ') + ' ₽';
+  }
+
+  function recalc() {
+    let sum = base;
+    rows.forEach((row) => {
+      const price = Number(row.querySelector('[data-price]').dataset.price);
+      const qty = Number(row.querySelector('.qty').textContent);
+      if (row.classList.contains('is-selected')) sum += price * qty;
+    });
+    totalNode.textContent = format(sum);
+  }
+
+  rows.forEach((row) => {
+    const qtyBox = row.querySelector('.pick-qty');
+    const select = () => {
+      const next = !row.classList.contains('is-selected');
+      row.classList.toggle('is-selected', next);
+      row.setAttribute('aria-pressed', String(next));
+      qtyBox.hidden = !next;
+      recalc();
+    };
+    row.addEventListener('click', (event) => {
+      if (event.target.closest('.pick-thumb, .pick-qty')) return;
+      select();
+    });
+    row.addEventListener('keydown', (event) => {
+      if (event.target !== row) return;
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        select();
+      }
+    });
+    row.querySelectorAll('[data-step]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const qtyNode = row.querySelector('.qty');
+        const next = Math.min(10, Math.max(1, Number(qtyNode.textContent) + Number(button.dataset.step)));
+        qtyNode.textContent = String(next);
+        recalc();
+      });
+    });
+  });
+
+  const zoom = document.getElementById('zoom');
+  const zoomImg = document.getElementById('zoom-img');
+  const zoomStage = zoom.querySelector('.zoom-stage');
+  const zoomThumbs = zoom.querySelector('.zoom-thumbs');
+  const counter = zoom.querySelector('.zoom-counter');
+  let images = [];
+  let index = 0;
+  let touchStartX = null;
+
+  function show() {
+    zoomImg.src = images[index];
+    zoomImg.alt = `${zoom.dataset.title} — фото ${index + 1}`;
+    counter.textContent = `${index + 1} / ${images.length}`;
+    zoom.querySelector('.prev').hidden = images.length < 2;
+    zoom.querySelector('.next').hidden = images.length < 2;
+    counter.hidden = images.length < 2;
+    zoomThumbs.hidden = images.length < 2;
+    zoomThumbs.querySelectorAll('.zoom-thumb').forEach((button, buttonIndex) => {
+      button.classList.toggle('is-active', buttonIndex === index);
+      button.setAttribute('aria-pressed', String(buttonIndex === index));
+    });
+  }
+
+  function close() {
+    zoom.hidden = true;
+  }
+
+  document.querySelectorAll('.pick-thumb').forEach((thumb) => {
+    thumb.addEventListener('click', (event) => {
+      event.stopPropagation();
+      images = thumb.dataset.images.split(',');
+      index = 0;
+      zoom.dataset.title = thumb.dataset.title;
+      zoomThumbs.replaceChildren();
+      images.forEach((src, imageIndex) => {
+        const button = document.createElement('button');
+        button.className = 'zoom-thumb';
+        button.type = 'button';
+        button.setAttribute('aria-label', `Показать фото ${imageIndex + 1}`);
+        const image = document.createElement('img');
+        image.src = src;
+        image.alt = '';
+        button.append(image);
+        button.addEventListener('click', () => {
+          index = imageIndex;
+          show();
+        });
+        zoomThumbs.append(button);
+      });
+      show();
+      zoom.hidden = false;
+    });
+  });
+
+  zoom.querySelector('.zoom-close').addEventListener('click', close);
+  zoom.addEventListener('click', (event) => {
+    if (event.target === zoom) close();
+  });
+  zoom.querySelector('.prev').addEventListener('click', (event) => {
+    event.stopPropagation();
+    index = (index - 1 + images.length) % images.length;
+    show();
+  });
+  zoom.querySelector('.next').addEventListener('click', (event) => {
+    event.stopPropagation();
+    index = (index + 1) % images.length;
+    show();
+  });
+  zoomStage.addEventListener('touchstart', (event) => {
+    touchStartX = event.touches[0].clientX;
+  }, { passive: true });
+  zoomStage.addEventListener('touchend', (event) => {
+    if (touchStartX === null || images.length < 2) return;
+    const distance = event.changedTouches[0].clientX - touchStartX;
+    touchStartX = null;
+    if (Math.abs(distance) < 40) return;
+    index = distance > 0 ? (index - 1 + images.length) % images.length : (index + 1) % images.length;
+    show();
+  }, { passive: true });
+  document.addEventListener('keydown', (event) => {
+    if (zoom.hidden) return;
+    if (event.key === 'Escape') close();
+    if (event.key === 'ArrowLeft') zoom.querySelector('.prev').click();
+    if (event.key === 'ArrowRight') zoom.querySelector('.next').click();
+  });
+
+  recalc();
+</script>
+</body>
+</html>

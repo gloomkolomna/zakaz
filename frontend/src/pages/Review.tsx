@@ -6,9 +6,11 @@ import { clearDraft, readDraft, writeDraft } from '../api/draft';
 import { formatPrice } from '../api/money';
 import { mediaUrl } from '../api/media';
 import BackLink from '../components/BackLink';
+import PickCard from '../components/PickCard';
 import Sheet from '../components/Sheet';
 import Skeleton from '../components/Skeleton';
 import Stepper from '../components/Stepper';
+import ZoomModal from '../components/ZoomModal';
 
 export default function Review() {
   const { id } = useParams();
@@ -17,6 +19,7 @@ export default function Review() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [selected, setSelected] = useState<Selected>(() => readDraft(productId));
   const [sheetStep, setSheetStep] = useState<number | null>(null);
+  const [galleryCard, setGalleryCard] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -223,51 +226,33 @@ export default function Review() {
         {editableStep && (
           <div className="picks">
             {editableStep.cards.map((card) => (
-              <ReviewPick
+              <PickCard
                 key={card.id}
                 card={card}
                 active={Boolean(selected[card.id])}
-                onClick={() => apply(toggleCard(selected, editableStep, card))}
+                quantity={selected[card.id]}
+                onToggle={() => apply(toggleCard(selected, editableStep, card))}
+                onView={() => {
+                  if (card.images.length > 0) setGalleryCard(card);
+                }}
+                onQuantityChange={(value) => apply(setQty(selected, card.id, value, card.max_qty))}
               />
             ))}
           </div>
         )}
       </Sheet>
+      {galleryCard && (
+        <ZoomModal
+          key={galleryCard.id}
+          src={mediaUrl(galleryCard.images[0].url)}
+          alt={`${galleryCard.title} — фото 1`}
+          images={galleryCard.images.map((image, index) => ({
+            url: mediaUrl(image.url),
+            alt: `${galleryCard.title} — фото ${index + 1}`,
+          }))}
+          onClose={() => setGalleryCard(null)}
+        />
+      )}
     </main>
-  );
-}
-
-function ReviewPick({
-  card,
-  active,
-  onClick,
-}: {
-  card: Card;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <div
-      className="pick"
-      role="button"
-      tabIndex={0}
-      aria-pressed={active}
-      onClick={onClick}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onClick();
-        }
-      }}
-    >
-      <div className="pick-media">
-        {card.image_url ? <img src={mediaUrl(card.image_url)} alt={card.title} /> : <span className="image-placeholder">Фото</span>}
-      </div>
-      <div className="pick-body">
-        <div className="pick-name">{card.title}</div>
-        <div className="pick-price">{formatPrice(card.price)}</div>
-      </div>
-      <span className="pick-check" aria-hidden="true">✓</span>
-    </div>
   );
 }

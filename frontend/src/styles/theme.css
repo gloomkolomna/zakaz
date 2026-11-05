@@ -361,72 +361,114 @@ h1 {
 
 .picks {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 10px;
   margin-top: 20px;
-}
-
-@media (min-width: 620px) {
-  .picks { grid-template-columns: repeat(3, 1fr); }
 }
 
 .pick {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  padding: 0 0 10px;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px 10px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--sheet);
   text-align: left;
   cursor: pointer;
-  overflow: hidden;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
   transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), transform 140ms var(--ease-out);
 }
 
-.pick:active { transform: scale(0.985); }
+.pick:active { transform: scale(0.995); }
 
 .pick[aria-pressed='true'] {
   border-color: var(--red);
   background: var(--red-tint);
 }
 
-.pick-media {
+.pick-thumb {
+  grid-column: 1;
+  grid-row: 1;
   position: relative;
-  aspect-ratio: 4 / 5;
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  background: var(--paper);
+  cursor: zoom-in;
+  touch-action: manipulation;
+}
+
+.pick-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pick-thumb .image-placeholder {
+  min-height: 0;
+  font-size: 12px;
+}
+
+.pick-thumb-badge {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
   display: grid;
   place-items: center;
-  border-bottom: 1px solid var(--line-soft);
-  background: var(--sheet);
-}
-
-.pick-photo {
-  position: absolute;
-  left: 8px;
-  bottom: 8px;
-  min-height: 26px;
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xs);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
-  font-size: 11px;
-  cursor: zoom-in;
+  color: var(--ink-2);
 }
 
-.pick-photo:hover {
+.pick-thumb-badge svg {
+  display: block;
+  width: 11px;
+  height: 11px;
+}
+
+.pick-main {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 8px 34px 8px 10px;
+  border-radius: var(--radius-s);
   background: var(--paper);
+  transition: background-color 160ms var(--ease-out);
 }
 
-.pick-media svg { width: 100%; height: 100%; display: block; }
+.pick[aria-pressed='true'] .pick-main { background: var(--sheet); }
 
-.pick-body { padding: 10px 10px 0; }
+.pick-name {
+  font-size: 15px;
+  line-height: 1.3;
+  font-weight: 500;
+}
 
-.pick-name { font-size: 14px; line-height: 1.35; }
+.pick-description {
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.35;
+}
 
 .pick-price {
-  margin-top: 3px;
   font-size: 14px;
+  line-height: 1.3;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
@@ -437,17 +479,64 @@ h1 {
   right: 8px;
   width: 22px;
   height: 22px;
+  border: 1px solid #b9bdb4;
   border-radius: 50%;
-  background: var(--red);
-  color: #fff;
   display: grid;
   place-items: center;
-  opacity: 0;
-  transform: scale(0.9);
-  transition: opacity 140ms var(--ease-out), transform 160ms var(--ease-out);
+  background: transparent;
+  color: transparent;
+  line-height: 1;
+  transition: background-color 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out);
 }
 
-.pick[aria-pressed='true'] .pick-check { opacity: 1; transform: scale(1); }
+.pick[aria-pressed='true'] .pick-check {
+  border-color: var(--red);
+  background: var(--red);
+  color: #fff;
+}
+
+.pick-qty {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.pick-qty .stepper.mini {
+  width: 148px;
+  height: 40px;
+  margin: 0;
+}
+
+.pick-qty .stepper.mini button {
+  width: 44px;
+  font-size: 18px;
+}
+
+.pick-qty .stepper.mini .qty { font-size: 15px; }
+
+@media (min-width: 620px) {
+  .picks { gap: 12px; }
+
+  .pick { gap: 10px; }
+
+  .pick-main { padding-right: 138px; }
+
+  .pick-qty {
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    z-index: 1;
+    align-self: end;
+    justify-self: end;
+    margin: 0 8px 8px 0;
+  }
+
+  .pick-qty .stepper.mini {
+    width: 120px;
+    height: 36px;
+  }
+
+  .pick-qty .stepper.mini button { width: 40px; }
+}
 
 .card-gallery {
   margin-top: 16px;
@@ -1205,10 +1294,6 @@ h1 {
 
 .sheet-picks { margin-top: 14px; overflow-y: auto; min-height: 0; }
 
-.sheet-picks .pick-media { aspect-ratio: 1 / 1; position: relative; }
-
-.sheet-picks .pick-media svg { position: absolute; inset: 0; }
-
 .sheet-picks .note {
   margin-bottom: 12px;
 }
@@ -1427,7 +1512,6 @@ a.brand:active {
 }
 
 .image-button img,
-.pick-media img,
 .legend-thumb img,
 .thumb img {
   display: block;
@@ -1582,19 +1666,23 @@ a.brand:active {
   max-width: 100vw;
   max-height: 100dvh;
   object-fit: contain;
-}
-
-.zoom-modal img {
   cursor: default;
 }
 
 .zoom-stage {
   position: relative;
   display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   place-items: center;
   width: 100%;
   height: 100%;
-  touch-action: none;
+  touch-action: pan-y;
+}
+
+.zoom-stage > img {
+  grid-row: 1;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 116px);
 }
 
 .zoom-nav {
@@ -1619,18 +1707,54 @@ a.brand:active {
 .zoom-nav.prev { left: 10px; }
 .zoom-nav.next { right: 10px; }
 
+.zoom-footer {
+  grid-row: 2;
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
 .zoom-counter {
-  position: fixed;
-  bottom: 16px;
-  left: 50%;
-  z-index: 90;
-  padding: 4px 10px;
-  transform: translateX(-50%);
-  border-radius: var(--radius-xs);
-  background: rgba(20, 24, 20, 0.55);
+  justify-self: center;
   color: #fff;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+
+.zoom-thumbs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+}
+
+.zoom-thumb {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius-xs);
+  background: none;
+  opacity: 0.6;
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.zoom-thumb.is-active {
+  border-color: #fff;
+  opacity: 1;
+}
+
+.zoom-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .early-badge {

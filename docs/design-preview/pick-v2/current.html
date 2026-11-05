@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Шаг — как сейчас</title>
+<link rel="stylesheet" href="../../../frontend/src/styles/theme.css">
+<link rel="stylesheet" href="preview.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <a class="brand" href="#">
+      <img class="brand-logo" src="../../../frontend/public/logo.png" width="38" height="38" alt="">
+      <span>Магазин игр</span>
+    </a>
+    <button class="icon-btn" type="button" aria-label="Меню">
+      <span class="menu-glyph" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+  </header>
+
+  <main class="page page-builder">
+    <a class="back-link" href="#"><span aria-hidden="true">←</span> К товару</a>
+
+    <div class="step-head">
+      <h1>Декор</h1>
+      <div class="step-meta">
+        <span>Шаг 2 из 3</span>
+        <span class="crosses" aria-hidden="true">
+          <span class="done">✕</span>
+          <span class="current">✕</span>
+          <span>✕</span>
+        </span>
+      </div>
+      <div class="hint">Можно выбрать несколько</div>
+    </div>
+
+    <div class="picks">
+      <div class="pick" role="button" tabindex="0" aria-pressed="true">
+        <div class="pick-media">
+          <img src="img/rose.jpg" alt="Роза">
+          <button class="pick-photo" type="button">Фото</button>
+        </div>
+        <div class="pick-body">
+          <div class="pick-name">Роза</div>
+          <div class="pick-price">120 ₽</div>
+        </div>
+        <span class="pick-check" aria-hidden="true">✓</span>
+        <span class="stepper mini">
+          <button type="button" aria-label="Уменьшить количество">−</button>
+          <span class="qty">2</span>
+          <button type="button" aria-label="Увеличить количество">+</button>
+        </span>
+      </div>
+
+      <div class="pick" role="button" tabindex="0" aria-pressed="false">
+        <div class="pick-media">
+          <img src="img/sage.jpg" alt="Шалфей">
+          <button class="pick-photo" type="button">Фото</button>
+        </div>
+        <div class="pick-body">
+          <div class="pick-name">Шалфей</div>
+          <div class="pick-price">140 ₽</div>
+        </div>
+        <span class="pick-check" aria-hidden="true">✓</span>
+      </div>
+
+      <div class="pick" role="button" tabindex="0" aria-pressed="true">
+        <div class="pick-media">
+          <img src="img/graphite.jpg" alt="Графит">
+          <button class="pick-photo" type="button">Фото</button>
+        </div>
+        <div class="pick-body">
+          <div class="pick-name">Графит</div>
+          <div class="pick-price">150 ₽</div>
+        </div>
+        <span class="pick-check" aria-hidden="true">✓</span>
+        <span class="stepper mini">
+          <button type="button" aria-label="Уменьшить количество">−</button>
+          <span class="qty">1</span>
+          <button type="button" aria-label="Увеличить количество">+</button>
+        </span>
+      </div>
+
+      <div class="pick" role="button" tabindex="0" aria-pressed="false">
+        <div class="pick-media">
+          <img src="img/ochre.jpg" alt="Охра">
+          <button class="pick-photo" type="button">Фото</button>
+        </div>
+        <div class="pick-body">
+          <div class="pick-name">Охра</div>
+          <div class="pick-price">130 ₽</div>
+        </div>
+        <span class="pick-check" aria-hidden="true">✓</span>
+      </div>
+    </div>
+
+    <section class="card-gallery" aria-label="Фото: Роза">
+      <div class="card-gallery-head">
+        <h3 class="card-gallery-title">Роза</h3>
+        <span class="card-gallery-count">1 / 2</span>
+      </div>
+      <button class="card-gallery-main" type="button" aria-label="Увеличить фото">
+        <img src="img/rose.jpg" alt="Роза — фото 1">
+      </button>
+      <div class="card-gallery-thumbs" role="group" aria-label="Другие фото">
+        <button class="card-gallery-thumb is-active" type="button" aria-label="Показать фото 1" aria-pressed="true">
+          <img src="img/rose.jpg" alt="">
+        </button>
+        <button class="card-gallery-thumb" type="button" aria-label="Показать фото 2" aria-pressed="false">
+          <img src="img/sage.jpg" alt="">
+        </button>
+      </div>
+    </section>
+
+    <div class="bar">
+      <button class="skip" type="button">Пропустить</button>
+      <button class="btn" type="button">К заказу · 1 640 ₽</button>
+    </div>
+  </main>
+</div>
+</body>
+</html>

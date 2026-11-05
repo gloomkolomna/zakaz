@@ -136,8 +136,28 @@ export default function ZoomModal({
           </button>
         )}
         {list.length > 1 && (
-          <div className="zoom-counter">
-            {current + 1} / {list.length}
+          <div className="zoom-footer">
+            <div className="zoom-counter">
+              {current + 1} / {list.length}
+            </div>
+            <div className="zoom-thumbs" role="group" aria-label="Все фото">
+              {list.map((image, imageIndex) => (
+                <button
+                  className={`zoom-thumb${imageIndex === current ? ' is-active' : ''}`}
+                  type="button"
+                  key={`${image.url}-${imageIndex}`}
+                  aria-label={`Показать фото ${imageIndex + 1}`}
+                  aria-pressed={imageIndex === current}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setCurrent(imageIndex);
+                    onIndexChange?.(imageIndex);
+                  }}
+                >
+                  <img src={image.url} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

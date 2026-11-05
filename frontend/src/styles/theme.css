@@ -326,6 +326,7 @@ h1 {
   margin: 16px 0 0;
   color: var(--ink-2);
   max-width: 52ch;
+  white-space: pre-line;
 }
 
 .specs {

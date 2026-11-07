@@ -181,6 +181,11 @@ export default function Builder() {
       )}
 
       <div className="bar">
+        {stepIndex > 0 && (
+          <button className="skip" type="button" onClick={() => setSearchParams({ step: String(stepIndex - 1) })}>
+            Назад
+          </button>
+        )}
         {!step.is_required && (
           <button className="skip" type="button" onClick={skip}>
             Пропустить

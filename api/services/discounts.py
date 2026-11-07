@@ -9,9 +9,11 @@ def discount_out(grant: DiscountGrant, user_registered: bool | None = None) -> d
         "vk_id": grant.vk_id,
         "percent": grant.percent,
         "status": grant.status,
+        "source": grant.source,
         "external_reward_id": grant.external_reward_id,
         "created_at": grant.created_at.isoformat() if grant.created_at else None,
         "used_at": grant.used_at.isoformat() if grant.used_at else None,
+        "revoked_at": grant.revoked_at.isoformat() if grant.revoked_at else None,
         "order_id": grant.order_id,
     }
     if user_registered is not None:
@@ -35,6 +37,24 @@ def grant_discount(db, vk_id: int, percent: int, external_reward_id: str) -> dic
         db.add(grant)
         db.commit()
         db.refresh(grant)
+    return discount_out(grant, user is not None)
+
+
+def grant_manual_discount(db, vk_id: int, percent: int) -> dict:
+    import uuid
+
+    user = db.query(User).filter(User.vk_id == vk_id).first()
+    grant = DiscountGrant(
+        vk_id=vk_id,
+        percent=percent,
+        source="manual",
+        external_reward_id=f"manual:{uuid.uuid4().hex}",
+        status="available",
+        created_at=utcnow(),
+    )
+    db.add(grant)
+    db.commit()
+    db.refresh(grant)
     return discount_out(grant, user is not None)
 
 

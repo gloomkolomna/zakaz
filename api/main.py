@@ -9,6 +9,7 @@ import config
 from db import SessionLocal, init_db
 from middleware import log_failed_requests
 from routes.admin_catalog import router as admin_catalog_router
+from routes.admin_discounts import router as admin_discounts_router
 from routes.admin_orders import router as admin_orders_router
 from routes.admin_reserve import router as admin_reserve_router
 from routes.auth import router as auth_router
@@ -61,6 +62,7 @@ app.include_router(catalog_router)
 app.include_router(orders_router)
 app.include_router(reserve_router)
 app.include_router(admin_catalog_router)
+app.include_router(admin_discounts_router)
 app.include_router(admin_orders_router)
 app.include_router(admin_reserve_router)
 app.include_router(internal_rewards_router)

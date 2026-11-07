@@ -125,10 +125,18 @@ export interface DiscountGrant {
   vk_id: number;
   percent: number;
   status: 'available' | 'used' | 'revoked';
+  source: 'holidays' | 'manual';
   external_reward_id: string;
   created_at: string | null;
   used_at: string | null;
+  revoked_at: string | null;
   order_id: number | null;
+}
+
+export interface AdminDiscountGrant extends DiscountGrant {
+  user_registered: boolean;
+  display_name: string | null;
+  order_title: string | null;
 }
 
 export interface OrderBrief {
@@ -423,6 +431,13 @@ export const api = {
     client.post(`/admin/orders/${id}/move`, { direction }).then((res) => res.data),
   adminCancelSeen: (id: number) =>
     client.post<OrderDetail>(`/admin/orders/${id}/cancel-seen`).then((res) => res.data),
+
+  adminDiscounts: (filters: { vk_id?: number; status?: string }) =>
+    client.get<{ items: AdminDiscountGrant[] }>('/admin/discounts', { params: filters }).then((res) => res.data.items),
+  adminCreateDiscount: (vkId: number, percent: number) =>
+    client.post<AdminDiscountGrant>('/admin/discounts', { vk_id: vkId, percent }).then((res) => res.data),
+  adminRevokeDiscount: (id: number) =>
+    client.post<{ ok: boolean; status: string }>(`/admin/discounts/${id}/revoke`).then((res) => res.data),
 
   adminReserve: () =>
     client.get<AdminReserveResponse>('/admin/reserve').then((res) => res.data),

@@ -24,6 +24,7 @@ const ProductEdit = lazy(() => import('./pages/admin/ProductEdit'));
 const StepEdit = lazy(() => import('./pages/admin/StepEdit'));
 const OrdersTab = lazy(() => import('./pages/admin/OrdersTab'));
 const AdminOrderDetail = lazy(() => import('./pages/admin/AdminOrderDetail'));
+const DiscountsTab = lazy(() => import('./pages/admin/DiscountsTab'));
 const ReserveTab = lazy(() => import('./pages/admin/ReserveTab'));
 const PlayersTab = lazy(() => import('./pages/admin/PlayersTab'));
 const PlayerDetail = lazy(() => import('./pages/admin/PlayerDetail'));
@@ -113,6 +114,7 @@ export default function App() {
               <Route path="products/:id/steps/:stepId" element={<StepEdit />} />
               <Route path="orders" element={<OrdersTab />} />
               <Route path="orders/:id" element={<AdminOrderDetail />} />
+              <Route path="discounts" element={<DiscountsTab />} />
               <Route path="reserve" element={<ReserveTab />} />
               <Route path="players" element={<PlayersTab />} />
               <Route path="players/:vkId" element={<PlayerDetail />} />

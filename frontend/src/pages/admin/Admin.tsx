@@ -7,6 +7,7 @@ const TABS = [
   { to: 'sections', label: 'Разделы' },
   { to: 'products', label: 'Товары' },
   { to: 'orders', label: 'Заказы' },
+  { to: 'discounts', label: 'Скидки' },
   { to: 'reserve', label: 'Резерв' },
   { to: 'players', label: 'Заказчики' },
   { to: 'texts', label: 'Тексты' },

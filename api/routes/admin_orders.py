@@ -183,7 +183,7 @@ def export_orders(
     writer = csv.writer(out, delimiter=";", lineterminator="\r\n")
     writer.writerow([
         "№", "Очередь", "Дата", "Раздел", "Товар", "Состав",
-        "Кол-во позиций", "Сумма", "Статус", "VK ID", "Имя",
+        "Кол-во позиций", "Сумма без скидки", "Скидка %", "Скидка", "Сумма", "Статус", "VK ID", "Имя",
     ])
     for order in rows:
         created = order.created_at.replace(tzinfo=datetime.timezone.utc).astimezone(MSK)
@@ -196,6 +196,9 @@ def export_orders(
             order.product_title,
             composition,
             order.items_count,
+            order.subtotal,
+            order.discount_percent,
+            order.discount_amount,
             order.total,
             STATUS_LABELS.get(order.status, order.status),
             order.user_id,

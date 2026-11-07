@@ -43,6 +43,7 @@ export default function OrderSuccess() {
         <h1>Заказ №{order.id} отправлен</h1>
         <p>
           Сумма — {formatPrice(order.total)}.
+          {order.discount_amount > 0 ? ` Применена скидка ${order.discount_percent}%: −${formatPrice(order.discount_amount)}.` : ''}
           {order.queue_position ? ` Вы ${order.queue_position}-й в очереди.` : ''} Напишу вам в личные
           сообщения ВКонтакте, чтобы согласовать оплату и доставку.
         </p>

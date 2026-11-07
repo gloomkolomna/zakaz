@@ -194,6 +194,10 @@ class Order(Base):
     product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
     product_title = Column(String, nullable=False)
     section_title = Column(String, nullable=False)
+    subtotal = Column(Integer, nullable=False, default=0, server_default="0")
+    discount_percent = Column(Integer, nullable=False, default=0, server_default="0")
+    discount_amount = Column(Integer, nullable=False, default=0, server_default="0")
+    discount_grant_id = Column(Integer, ForeignKey("discount_grants.id", ondelete="SET NULL"), nullable=True)
     total = Column(Integer, nullable=False, default=0, server_default="0")
     items_count = Column(Integer, nullable=False, default=0, server_default="0")
     comment = Column(Text, nullable=True)
@@ -232,6 +236,21 @@ class OrderItem(Base):
     __table_args__ = (
         Index("ix_order_items_order", "order_id"),
     )
+
+
+class DiscountGrant(Base):
+    __tablename__ = "discount_grants"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    vk_id = Column(Integer, nullable=False, index=True)
+    percent = Column(Integer, nullable=False)
+    source = Column(String, nullable=False, default="holidays", server_default="holidays")
+    external_reward_id = Column(String, nullable=False, unique=True)
+    status = Column(String, nullable=False, default="available", server_default="available")
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+    used_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    order_id = Column(Integer, nullable=True)
 
 
 class ReserveEntry(Base):

@@ -16,6 +16,7 @@ from routes.catalog import router as catalog_router
 from routes.me import router as me_router
 from routes.orders import router as orders_router
 from routes.reserve import router as reserve_router
+from routes.internal_rewards import router as internal_rewards_router
 
 init_db()
 
@@ -62,6 +63,7 @@ app.include_router(reserve_router)
 app.include_router(admin_catalog_router)
 app.include_router(admin_orders_router)
 app.include_router(admin_reserve_router)
+app.include_router(internal_rewards_router)
 
 
 @app.get("/api/")

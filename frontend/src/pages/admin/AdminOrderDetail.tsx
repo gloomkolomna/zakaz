@@ -95,6 +95,18 @@ export default function AdminOrderDetail() {
         </div>
       )}
 
+      {order.discount_amount > 0 && (
+        <>
+          <div className="total">
+            <span className="total-label">Сумма без скидки</span>
+            <span className="total-value">{formatPrice(order.subtotal)}</span>
+          </div>
+          <div className="total">
+            <span className="total-label">Скидка {order.discount_percent}%</span>
+            <span className="total-value">−{formatPrice(order.discount_amount)}</span>
+          </div>
+        </>
+      )}
       <div className="total">
         <span className="total-label">Итого</span>
         <span className="total-value">{formatPrice(order.total)}</span>

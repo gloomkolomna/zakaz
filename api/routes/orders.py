@@ -30,6 +30,7 @@ class OrderIn(BaseModel):
     items: list[ItemIn] = []
     qty: int | None = None
     comment: str | None = None
+    discount_grant_id: int | None = None
 
 
 MAX_COMMENT = 1000
@@ -115,15 +116,17 @@ def create_order(data: OrderIn, db: Session = Depends(get_db), user: User = Depe
 
     _check_rate_limit(db, user)
     comment = _comment(data.comment)
+    from services.discounts import get_for_order
+    discount_grant = get_for_order(db, data.discount_grant_id, user.vk_id)
 
     if product.mode == "single":
-        return _single_order(db, user, product, data, comment)
+        return _single_order(db, user, product, data, comment, discount_grant)
 
-    return _build_order(db, user, product, data, comment)
+    return _build_order(db, user, product, data, comment, discount_grant)
 
 
 def _build_order(
-    db: Session, user: User, product: Product, data: OrderIn, comment: str | None
+    db: Session, user: User, product: Product, data: OrderIn, comment: str | None, discount_grant=None
 ) -> dict:
     if not 1 <= len(data.items) <= 100:
         _bad("В заказе должно быть от 1 до 100 позиций")
@@ -188,11 +191,11 @@ def _build_order(
                 sum=line_sum,
             )
         )
-    return _place_order(db, user, product, items, total, comment)
+    return _place_order(db, user, product, items, total, comment, discount_grant)
 
 
 def _single_order(
-    db: Session, user: User, product: Product, data: OrderIn, comment: str | None
+    db: Session, user: User, product: Product, data: OrderIn, comment: str | None, discount_grant=None
 ) -> dict:
     if data.items:
         _bad("Для одиночного товара состав не передаётся")
@@ -212,7 +215,7 @@ def _single_order(
         qty=qty,
         sum=total,
     )
-    return _place_order(db, user, product, [item], total, comment)
+    return _place_order(db, user, product, [item], total, comment, discount_grant)
 
 
 def _place_order(
@@ -222,14 +225,24 @@ def _place_order(
     items: list[OrderItem],
     total: int,
     comment: str | None,
+    discount_grant=None,
 ) -> dict:
+    from services.discounts import discount_amount
+
+    subtotal = total
+    percent = discount_grant.percent if discount_grant else 0
+    reduction = discount_amount(subtotal, percent) if discount_grant else 0
     order = Order(
         user_id=user.vk_id,
         buyer_name=user.display_name or f"Покупатель {user.vk_id}",
         product_id=product.id,
         product_title=product.title,
         section_title=product.section.title,
-        total=total,
+        subtotal=subtotal,
+        discount_percent=percent,
+        discount_amount=reduction,
+        discount_grant_id=discount_grant.id if discount_grant else None,
+        total=subtotal - reduction,
         items_count=len(items),
         comment=comment,
         status="new",
@@ -238,6 +251,11 @@ def _place_order(
         items=items,
     )
     db.add(order)
+    db.flush()
+    if discount_grant:
+        discount_grant.status = "used"
+        discount_grant.order_id = order.id
+        discount_grant.used_at = utcnow()
     db.commit()
     db.refresh(order)
     return order_detail(db, order)
@@ -248,6 +266,12 @@ def item_qty(items: list[ItemIn], card_id: int) -> int:
         if item.card_id == card_id:
             return item.qty
     return 0
+
+
+@router.get("/me/discounts")
+def my_discounts(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from services.discounts import available_discounts, discount_out
+    return {"items": [discount_out(grant) for grant in available_discounts(db, user.vk_id)]}
 
 
 @router.get("/me/orders")
@@ -284,6 +308,8 @@ def cancel_order(order_id: int, db: Session = Depends(get_db), user: User = Depe
     order.cancelled_at = utcnow()
     order.cancel_seen_at = None
     order.queue_order = None
+    from services.discounts import return_for_cancelled_order
+    return_for_cancelled_order(db, order)
     db.commit()
     db.refresh(order)
     return order_detail(db, order)

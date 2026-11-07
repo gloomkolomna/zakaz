@@ -152,7 +152,13 @@ def render_orders_pdf(orders, positions: dict[int, int]) -> bytes:
                     cell_style,
                 ),
                 Paragraph(str(order.items_count), cell_style),
-                Paragraph(_price(order.total), cell_style),
+                Paragraph(
+                    _price(order.total) + (
+                        f'<br/><font color="#68716A" size="7">скидка {order.discount_percent}%: −{_price(order.discount_amount)}</font>'
+                        if order.discount_amount else ""
+                    ),
+                    cell_style,
+                ),
                 Paragraph(status, cell_style),
             ])
 

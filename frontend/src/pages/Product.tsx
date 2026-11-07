@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api, type ProductDetail } from '../api/endpoints';
+import { api, type DiscountGrant, type ProductDetail } from '../api/endpoints';
 import { formatPrice } from '../api/money';
 import BackLink from '../components/BackLink';
+import DiscountSummary, { discountAmount } from '../components/DiscountSummary';
 import CardGallery from '../components/CardGallery';
 import EarlyBadge, { EarlyNote } from '../components/EarlyBadge';
 import ProductImage from '../components/ProductImage';
@@ -28,6 +29,7 @@ export default function Product() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [discount, setDiscount] = useState<DiscountGrant | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,7 +92,7 @@ export default function Product() {
     if (!product || submitting || product.is_hidden) return;
     setSubmitting(true);
     setOrderError(null);
-    api.createSingleOrder(product.id, qty, comment.trim() || undefined)
+    api.createSingleOrder(product.id, qty, comment.trim() || undefined, discount?.id)
       .then((order) => {
         setCheckoutOpen(false);
         navigate(`/order/${order.id}/success`);
@@ -111,6 +113,7 @@ export default function Product() {
   const price = isSingle ? product.price : product.from_price;
   const ready = isSingle ? price != null : hasSteps;
   const total = price == null ? null : price * qty;
+  const finalTotal = total == null ? null : total - discountAmount(total, discount?.percent || 0);
 
   return (
     <main className="page">
@@ -250,13 +253,14 @@ export default function Product() {
                 ? 'Режим просмотра'
                 : submitting
                   ? 'Отправляю…'
-                  : `Отправить заказ · ${formatPrice(total || 0)}`}
+                  : `Отправить заказ · ${formatPrice(finalTotal || 0)}`}
             </button>
           }
         >
           <div className="checkout-summary">
             {product.title} · {qty} шт. · {formatPrice(total || 0)}
           </div>
+          <DiscountSummary subtotal={total || 0} onChange={setDiscount} />
           {product.is_hidden && (
             <p className="note">Режим просмотра — заказ не отправится.</p>
           )}

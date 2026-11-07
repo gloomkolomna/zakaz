@@ -189,7 +189,7 @@ def test_export_csv(admin_client, db):
     assert resp.content.startswith(b"\xef\xbb\xbf")
     text = resp.content.decode("utf-8-sig")
     lines = text.splitlines()
-    assert lines[0] == "№;Очередь;Дата;Раздел;Товар;Состав;Кол-во позиций;Сумма;Статус;VK ID;Имя"
+    assert lines[0] == "№;Очередь;Дата;Раздел;Товар;Состав;Кол-во позиций;Сумма без скидки;Скидка %;Скидка;Сумма;Статус;VK ID;Имя"
     assert len(lines) == 4
     assert "Отменён" in text
     assert "30 × 40 × 2" in text

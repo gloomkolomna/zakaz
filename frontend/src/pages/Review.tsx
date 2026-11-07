@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api, type Card, type ProductDetail } from '../api/endpoints';
+import { api, type Card, type DiscountGrant, type ProductDetail } from '../api/endpoints';
 import { buildItems, normalizeSelection, removeCard, selectionTotal, setQty, stepHasSelection, toggleCard, type Selected } from '../api/selection';
 import { clearDraft, readDraft, writeDraft } from '../api/draft';
 import { formatPrice } from '../api/money';
 import { mediaUrl } from '../api/media';
 import BackLink from '../components/BackLink';
+import DiscountSummary from '../components/DiscountSummary';
 import PickCard from '../components/PickCard';
 import Sheet from '../components/Sheet';
 import Skeleton from '../components/Skeleton';
@@ -24,6 +25,7 @@ export default function Review() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [comment, setComment] = useState('');
+  const [discount, setDiscount] = useState<DiscountGrant | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +65,7 @@ export default function Review() {
     if (!product || product.is_hidden || product.sold_out || submitting || count === 0 || missing.length > 0) return;
     setSubmitting(true);
     setError(null);
-    api.createOrder(product.id, buildItems(selected, steps), comment.trim() || undefined)
+    api.createOrder(product.id, buildItems(selected, steps), comment.trim() || undefined, discount?.id)
       .then((order) => {
         clearDraft(productId);
         navigate(`/order/${order.id}/success`);
@@ -187,10 +189,7 @@ export default function Review() {
         <div className="admin-muted">Необязательно. Владелец увидит текст в заказе.</div>
       </div>
 
-      <div className="total">
-        <span className="total-label">Итого</span>
-        <span className="total-value">{formatPrice(total)}</span>
-      </div>
+      <DiscountSummary subtotal={total} onChange={setDiscount} />
       {!product.is_hidden && (
         <p className="note">Оплата и доставка — в переписке ВКонтакте. После отправки состав не меняется.</p>
       )}

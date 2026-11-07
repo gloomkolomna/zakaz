@@ -17,6 +17,10 @@ def order_brief(db, order, positions: dict[int, int] | None = None) -> dict:
         positions = queue_map(db)
     return {
         "id": order.id,
+        "subtotal": order.subtotal if order.subtotal is not None else order.total,
+        "discount_percent": order.discount_percent or 0,
+        "discount_amount": order.discount_amount or 0,
+        "discount_grant_id": order.discount_grant_id,
         "total": order.total,
         "status": order.status,
         "created_at": order.created_at.isoformat() if order.created_at else None,

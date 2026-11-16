@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import bridge, { parseURLSearchParamsForGetLaunchParams } from '@vkontakte/vk-bridge';
+import bridge from '@vkontakte/vk-bridge';
 import { setVkLaunchInfo } from '../api/client';
 import { parseVkParams } from '../vk/params';
 
@@ -81,24 +81,11 @@ export function VkBridgeProvider({ children }: { children: ReactNode }) {
         let params: Record<string, string> = {};
         let inVk = false;
 
-        try {
-          const launch = parseURLSearchParamsForGetLaunchParams(
-            window.location.search + window.location.hash,
-          );
-          if (launch && (launch as any).vk_user_id) {
-            inVk = true;
-            id = Number((launch as any).vk_user_id);
-            params = paramsOf(launch);
-          }
-        } catch {}
-
-        if (!id) {
-          const fallback = parseVkParams(window.location.search, window.location.hash);
-          if (fallback.vkUserId) {
-            inVk = true;
-            id = fallback.vkUserId;
-            params = fallback.params;
-          }
+        const parsed = parseVkParams(window.location.search, window.location.hash);
+        if (parsed.vkUserId) {
+          inVk = true;
+          id = parsed.vkUserId;
+          params = parsed.params;
         }
 
         bridge.send('VKWebAppInit').catch(() => {});

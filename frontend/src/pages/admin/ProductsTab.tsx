@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, type AdminProduct, type AdminSection } from '../../api/endpoints';
 import { formatPrice } from '../../api/money';
 import EarlyBadge from '../../components/EarlyBadge';
 import { useConfirm } from '../../components/ConfirmProvider';
 import Skeleton from '../../components/Skeleton';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 interface AppliedFilters {
   section: number | '';
@@ -22,6 +23,8 @@ export default function ProductsTab() {
   const [filterQ, setFilterQ] = useState('');
   const [applied, setApplied] = useState<AppliedFilters>({ section: initialFilter, q: '' });
   const [error, setError] = useState<string | null>(null);
+  const debouncedQ = useDebouncedValue(filterQ);
+  const firstAutoApply = useRef(true);
 
   function loadProducts(section: number | '', q: string) {
     return api.adminProducts(section || undefined, q || undefined)
@@ -39,9 +42,13 @@ export default function ProductsTab() {
     void loadProducts(applied.section, applied.q);
   }, [applied]);
 
-  function applyFilters() {
-    setApplied({ section: filterSection, q: filterQ.trim() });
-  }
+  useEffect(() => {
+    if (firstAutoApply.current) {
+      firstAutoApply.current = false;
+      return;
+    }
+    setApplied({ section: filterSection, q: debouncedQ.trim() });
+  }, [filterSection, debouncedQ]);
 
   function resetFilters() {
     setFilterSection('');
@@ -88,7 +95,7 @@ export default function ProductsTab() {
         </div>
       ) : (
         <>
-          <form className="admin-filters" onSubmit={(event) => { event.preventDefault(); applyFilters(); }}>
+          <div className="admin-filters">
             <div className="field">
               <label htmlFor="product-filter-section">Раздел</label>
               <select
@@ -113,9 +120,8 @@ export default function ProductsTab() {
                 placeholder="Название или ID"
               />
             </div>
-            <button className="btn secondary" type="submit">Найти</button>
             <button className="btn secondary" type="button" onClick={resetFilters}>Сбросить</button>
-          </form>
+          </div>
 
           {error && <div className="error-text">{error}</div>}
 

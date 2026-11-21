@@ -1,13 +1,16 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type AdminPlayer } from '../../api/endpoints';
 import Skeleton from '../../components/Skeleton';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 export default function PlayersTab() {
   const [players, setPlayers] = useState<AdminPlayer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [q, setQ] = useState('');
+  const debouncedQ = useDebouncedValue(q);
+  const firstAutoApply = useRef(true);
 
   function load(search = q) {
     setError(null);
@@ -20,10 +23,13 @@ export default function PlayersTab() {
     void load('');
   }, []);
 
-  function search(event: FormEvent) {
-    event.preventDefault();
-    load(q);
-  }
+  useEffect(() => {
+    if (firstAutoApply.current) {
+      firstAutoApply.current = false;
+      return;
+    }
+    load(debouncedQ);
+  }, [debouncedQ]);
 
   function resetSearch() {
     setQ('');
@@ -51,7 +57,7 @@ export default function PlayersTab() {
 
   return (
     <section>
-      <form className="admin-filters" onSubmit={search}>
+      <div className="admin-filters">
         <div className="field">
           <label htmlFor="player-q">Поиск по ФИО или VK ID</label>
           <input
@@ -61,9 +67,8 @@ export default function PlayersTab() {
             placeholder="Например, Иван или 400977"
           />
         </div>
-        <button className="btn secondary" type="submit">Найти</button>
         {q && <button className="btn secondary" type="button" onClick={resetSearch}>Сбросить</button>}
-      </form>
+      </div>
 
       <div className="admin-actions" style={{ marginBottom: 16 }}>
         <button className="btn secondary" type="button" onClick={sync} disabled={syncing}>

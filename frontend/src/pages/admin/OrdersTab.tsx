@@ -16,6 +16,7 @@ import { plural } from '../../api/plural';
 import CancelOrderDialog from '../../components/CancelOrderDialog';
 import StatusChip from '../../components/StatusChip';
 import Skeleton from '../../components/Skeleton';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { usePolling } from '../../hooks/usePolling';
 
 const LIMIT = 20;
@@ -50,6 +51,9 @@ export default function OrdersTab() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const requestId = useRef(0);
+  const debouncedQ = useDebouncedValue(q);
+  const debouncedBuyer = useDebouncedValue(buyerId);
+  const firstAutoApply = useRef(true);
 
   useEffect(() => {
     Promise.all([api.adminSections(), api.adminProducts()])
@@ -89,6 +93,14 @@ export default function OrdersTab() {
     };
   }, [filters]);
   usePolling(() => fetchOrders(true), 10_000);
+
+  useEffect(() => {
+    if (firstAutoApply.current) {
+      firstAutoApply.current = false;
+      return;
+    }
+    applyFilters();
+  }, [debouncedQ, debouncedBuyer, dateFrom, dateTo, sectionId, productId]);
 
   const visibleProducts = useMemo(
     () => (sectionId === '' ? products : products.filter((product) => product.section_id === sectionId)),
@@ -279,11 +291,11 @@ export default function OrdersTab() {
       <div className="admin-filters">
         <div className="field">
           <label htmlFor="order-q">Поиск</label>
-          <input id="order-q" value={q} onChange={(event) => setQ(event.target.value)} placeholder="Имя, товар или №" onKeyDown={(event) => event.key === 'Enter' && applyFilters()} />
+          <input id="order-q" value={q} onChange={(event) => setQ(event.target.value)} placeholder="Имя, товар или №" />
         </div>
         <div className="field">
           <label htmlFor="order-buyer">Заказчик (VK ID)</label>
-          <input id="order-buyer" inputMode="numeric" value={buyerId} onChange={(event) => setBuyerId(event.target.value)} placeholder="Например, 400977" onKeyDown={(event) => event.key === 'Enter' && applyFilters()} />
+          <input id="order-buyer" inputMode="numeric" value={buyerId} onChange={(event) => setBuyerId(event.target.value)} placeholder="Например, 400977" />
         </div>
         <div className="field">
           <label htmlFor="order-from">С даты</label>
@@ -307,7 +319,6 @@ export default function OrdersTab() {
             {visibleProducts.map((product) => <option key={product.id} value={product.id}>{product.title}</option>)}
           </select>
         </div>
-        <button className="btn secondary" type="button" onClick={() => applyFilters()}>Применить</button>
         <button className="btn secondary" type="button" onClick={() => downloadOrdersCsv(filters)}>CSV</button>
         <button className="btn secondary" type="button" onClick={() => downloadOrdersPdf(filters)}>PDF</button>
       </div>

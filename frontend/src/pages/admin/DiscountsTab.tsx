@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type AdminDiscountGrant } from '../../api/endpoints';
 import { formatDate } from '../../api/money';
 import { useConfirm } from '../../components/ConfirmProvider';
 import Skeleton from '../../components/Skeleton';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 const STATUS_LABELS = {
   available: 'Доступна',
@@ -21,6 +22,8 @@ export default function DiscountsTab() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const debouncedVk = useDebouncedValue(filterVkId);
+  const firstAutoApply = useRef(true);
 
   function load(vk = filterVkId, status = filterStatus) {
     return api.adminDiscounts({
@@ -35,6 +38,14 @@ export default function DiscountsTab() {
   useEffect(() => {
     void load('', '');
   }, []);
+
+  useEffect(() => {
+    if (firstAutoApply.current) {
+      firstAutoApply.current = false;
+      return;
+    }
+    void load(debouncedVk, filterStatus);
+  }, [debouncedVk, filterStatus]);
 
   function create(event: FormEvent) {
     event.preventDefault();
@@ -55,11 +66,6 @@ export default function DiscountsTab() {
       })
       .catch((e) => setError(e?.response?.data?.detail || 'Не удалось выдать скидку'))
       .finally(() => setBusy(false));
-  }
-
-  function applyFilters(event: FormEvent) {
-    event.preventDefault();
-    void load();
   }
 
   async function revoke(item: AdminDiscountGrant) {
@@ -108,7 +114,7 @@ export default function DiscountsTab() {
       </form>
       <p className="admin-muted">Заказчик увидит её при оформлении любого заказа. Регистрация в приложении не нужна.</p>
 
-      <form className="admin-filters" onSubmit={applyFilters}>
+      <div className="admin-filters">
         <div className="field">
           <label htmlFor="discount-filter-vk">Фильтр по VK ID</label>
           <input id="discount-filter-vk" type="number" value={filterVkId} onChange={(event) => setFilterVkId(event.target.value)} />
@@ -122,13 +128,12 @@ export default function DiscountsTab() {
             <option value="revoked">Отозвана</option>
           </select>
         </div>
-        <button className="btn secondary" type="submit">Показать</button>
         {(filterVkId || filterStatus) && (
           <button className="btn secondary" type="button" onClick={() => { setFilterVkId(''); setFilterStatus(''); void load('', ''); }}>
             Сбросить
           </button>
         )}
-      </form>
+      </div>
 
       {error && <div className="error-text">{error}</div>}
       {notice && <div className="alert"><div className="alert-body">{notice}</div></div>}

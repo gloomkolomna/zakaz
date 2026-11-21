@@ -25,6 +25,7 @@ def order_brief(db, order, positions: dict[int, int] | None = None) -> dict:
         "status": order.status,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "cancelled_at": order.cancelled_at.isoformat() if order.cancelled_at else None,
+        "cancel_reason": order.cancel_reason,
         "done_at": order.done_at.isoformat() if order.done_at else None,
         "product_id": order.product_id,
         "product_title": order.product_title,

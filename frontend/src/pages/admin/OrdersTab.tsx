@@ -12,6 +12,8 @@ import {
   type OrderStatus,
 } from '../../api/endpoints';
 import { formatDate, formatPrice } from '../../api/money';
+import { plural } from '../../api/plural';
+import CancelOrderDialog from '../../components/CancelOrderDialog';
 import StatusChip from '../../components/StatusChip';
 import Skeleton from '../../components/Skeleton';
 import { usePolling } from '../../hooks/usePolling';
@@ -34,6 +36,10 @@ export default function OrdersTab() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('');
   const [queueOnly, setQueueOnly] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [groupByBuyer, setGroupByBuyer] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<number | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -89,12 +95,13 @@ export default function OrdersTab() {
     [products, sectionId],
   );
 
-  function applyFilters(nextStatus: OrderStatus | '' = statusFilter, queue = queueOnly, unread = unreadOnly) {
+  function applyFilters(nextStatus: OrderStatus | '' = statusFilter, queue = queueOnly, unread = unreadOnly, group = groupByBuyer) {
     const parsedBuyer = Number(buyerId.trim());
     setFilters({
       status: nextStatus || undefined,
       queue: queue ? 1 : undefined,
       unread: unread ? 1 : undefined,
+      group: group && !queue ? 'buyer' : undefined,
       q: q.trim() || undefined,
       buyer_id: buyerId.trim() && Number.isFinite(parsedBuyer) ? parsedBuyer : undefined,
       date_from: dateFrom || undefined,
@@ -125,6 +132,25 @@ export default function OrdersTab() {
     applyFilters(statusFilter, queueOnly, next);
   }
 
+  function chooseGroup() {
+    const next = !groupByBuyer;
+    setGroupByBuyer(next);
+    setQueueOnly(false);
+    setStatusFilter('');
+    applyFilters('', false, unreadOnly, next);
+  }
+
+  const buyerGroups = useMemo(() => {
+    if (!groupByBuyer || !data) return [];
+    const result: { user_id: number; name: string; items: OrderBrief[] }[] = [];
+    for (const item of data.items) {
+      const last = result[result.length - 1];
+      if (last && last.user_id === item.user_id) last.items.push(item);
+      else result.push({ user_id: item.user_id, name: item.buyer_name, items: [item] });
+    }
+    return result;
+  }, [groupByBuyer, data]);
+
   function reload() {
     setFilters((current) => ({ ...current }));
   }
@@ -139,6 +165,59 @@ export default function OrdersTab() {
 
   function cancelSeen(id: number) {
     api.adminCancelSeen(id).then(reload).catch(() => setError('Не удалось подтвердить отмену'));
+  }
+
+  function cancelOrder(reason: string) {
+    if (cancelTarget === null) return;
+    setCancelling(true);
+    setCancelError(null);
+    api.adminCancelOrder(cancelTarget, reason)
+      .then(() => {
+        setCancelTarget(null);
+        reload();
+      })
+      .catch((e) => {
+        const detail = e?.response?.data?.detail;
+        setCancelError(typeof detail === 'string' ? detail : 'Не удалось отменить заказ');
+      })
+      .finally(() => setCancelling(false));
+  }
+
+  function renderOrder(item: OrderBrief) {
+    return (
+      <div className={`order${item.status === 'cancelled' ? ' is-cancelled' : ''}${item.status === 'done' ? ' is-done' : ''}`} key={item.id}>
+        <div className="order-id">
+          {item.status === 'new' && item.queue_position && <span className="qnum">{item.queue_position}</span>}
+          № {item.id}
+        </div>
+        <div className="order-sum">{formatPrice(item.total)}</div>
+        <div className="order-what">
+          {item.product_title} · {item.buyer_name}
+        </div>
+        <div className="order-when">
+          {formatDate(item.created_at)} <StatusChip status={item.status} />
+        </div>
+        <div className="order-action">
+          <div className="move-group">
+            {item.status === 'new' && (
+              <>
+                <button className="move-btn" type="button" aria-label="Выше" disabled={!item.queue_position || item.queue_position <= 1} onClick={() => move(item.id, 'up')}>↑</button>
+                <button className="move-btn" type="button" aria-label="Ниже" disabled={!item.queue_position || item.queue_position >= (data?.summary.queue || 0)} onClick={() => move(item.id, 'down')}>↓</button>
+              </>
+            )}
+          </div>
+          <div className="admin-actions">
+            <Link className="done-btn" to={`/admin/orders/${item.id}`}>Открыть</Link>
+            {item.status === 'new' && (
+              <>
+                <button className="done-btn" type="button" onClick={() => complete(item.id)}>Выполнить</button>
+                <button className="done-btn" type="button" onClick={() => { setCancelError(null); setCancelTarget(item.id); }}>Отменить</button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (loading && !data) return <Skeleton lines={5} />;
@@ -192,6 +271,9 @@ export default function OrdersTab() {
         <button className={`chip${unreadOnly ? ' is-active' : ''}`} type="button" aria-pressed={unreadOnly} onClick={chooseUnread}>
           Непрочитанные
         </button>
+        <button className={`chip${groupByBuyer ? ' is-active' : ''}`} type="button" aria-pressed={groupByBuyer} onClick={chooseGroup}>
+          По заказчикам
+        </button>
       </div>
 
       <div className="admin-filters">
@@ -239,37 +321,20 @@ export default function OrdersTab() {
       {loading && <div className="admin-muted">Обновляю…</div>}
 
       <div>
-        {(data?.items || []).map((item) => (
-          <div className={`order${item.status === 'cancelled' ? ' is-cancelled' : ''}${item.status === 'done' ? ' is-done' : ''}`} key={item.id}>
-            <div className="order-id">
-              {item.status === 'new' && item.queue_position && <span className="qnum">{item.queue_position}</span>}
-              № {item.id}
-            </div>
-            <div className="order-sum">{formatPrice(item.total)}</div>
-            <div className="order-what">
-              {item.product_title} · {item.buyer_name}
-            </div>
-            <div className="order-when">
-              {formatDate(item.created_at)} <StatusChip status={item.status} />
-            </div>
-            <div className="order-action">
-              <div className="move-group">
-                {item.status === 'new' && (
-                  <>
-                    <button className="move-btn" type="button" aria-label="Выше" disabled={!item.queue_position || item.queue_position <= 1} onClick={() => move(item.id, 'up')}>↑</button>
-                    <button className="move-btn" type="button" aria-label="Ниже" disabled={!item.queue_position || item.queue_position >= (data?.summary.queue || 0)} onClick={() => move(item.id, 'down')}>↓</button>
-                  </>
-                )}
+        {groupByBuyer
+          ? buyerGroups.map((group) => (
+            <div className="order-group" key={group.user_id}>
+              <div className="order-group-head">
+                <Link className="order-group-name" to={`/admin/players/${group.user_id}`}>{group.name}</Link>
+                <span className="admin-muted">
+                  {group.items.length} {plural(group.items.length, 'заказ', 'заказа', 'заказов')}
+                  {' · '}{formatPrice(group.items.reduce((sum, item) => sum + item.total, 0))}
+                </span>
               </div>
-              <div className="admin-actions">
-                <Link className="done-btn" to={`/admin/orders/${item.id}`}>Открыть</Link>
-                {item.status === 'new' && (
-                  <button className="done-btn" type="button" onClick={() => complete(item.id)}>Выполнить</button>
-                )}
-              </div>
+              {group.items.map(renderOrder)}
             </div>
-          </div>
-        ))}
+          ))
+          : (data?.items || []).map(renderOrder)}
         {data && data.items.length === 0 && <div className="empty">Заказов по этому фильтру нет.</div>}
       </div>
 
@@ -286,6 +351,15 @@ export default function OrdersTab() {
           </button>
         </div>
       )}
+
+      <CancelOrderDialog
+        open={cancelTarget !== null}
+        orderId={cancelTarget ?? 0}
+        busy={cancelling}
+        error={cancelError}
+        onConfirm={cancelOrder}
+        onCancel={() => setCancelTarget(null)}
+      />
     </section>
   );
 }

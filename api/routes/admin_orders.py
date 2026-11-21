@@ -118,6 +118,7 @@ def list_orders(
     status_filter: str | None = Query(default=None, alias="status"),
     queue: int = 0,
     cancel_unread: int = 0,
+    group: str | None = None,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
@@ -127,6 +128,8 @@ def list_orders(
     end = _date(date_to, "Дата по")
     limit = max(1, min(limit, 200))
     offset = max(0, offset)
+    if group is not None and group != "buyer":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неизвестная группировка")
     base = _base_query(db, section_id, product_id, buyer_id, start, end, q, unread, status_filter, queue, cancel_unread)
 
     total = base.count()
@@ -142,6 +145,13 @@ def list_orders(
     if queue:
         rows = (
             base.order_by(func.coalesce(Order.queue_order, 1_000_000_000), Order.created_at, Order.id)
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+    elif group == "buyer":
+        rows = (
+            base.order_by(Order.user_id, Order.created_at.desc(), Order.id.desc())
             .offset(offset)
             .limit(limit)
             .all()
@@ -273,6 +283,42 @@ def complete_order(order_id: int, db: Session = Depends(get_db), user: User = De
     order.status = "done"
     order.done_at = utcnow()
     order.queue_order = None
+    db.commit()
+    db.refresh(order)
+    return order_detail(db, order)
+
+
+class CancelIn(BaseModel):
+    reason: str
+
+
+MAX_CANCEL_REASON = 500
+
+
+@router.post("/orders/{order_id}/cancel")
+def admin_cancel_order(
+    order_id: int, data: CancelIn, db: Session = Depends(get_db), user: User = Depends(require_role("admin"))
+):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if order is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Заказ не найден")
+    reason = data.reason.strip()
+    if not reason:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Укажите причину отмены")
+    if len(reason) > MAX_CANCEL_REASON:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Причина слишком длинная (макс. {MAX_CANCEL_REASON} символов)",
+        )
+    if order.status != "new":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Отменить можно только заказ в работе")
+    order.status = "cancelled"
+    order.cancelled_at = utcnow()
+    order.cancel_reason = reason
+    order.cancel_seen_at = utcnow()
+    order.queue_order = None
+    from services.discounts import return_for_cancelled_order
+    return_for_cancelled_order(db, order)
     db.commit()
     db.refresh(order)
     return order_detail(db, order)

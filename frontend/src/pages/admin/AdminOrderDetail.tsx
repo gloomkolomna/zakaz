@@ -5,6 +5,7 @@ import { usePolling } from '../../hooks/usePolling';
 import { formatDate, formatPrice } from '../../api/money';
 import { mediaUrl } from '../../api/media';
 import BackLink from '../../components/BackLink';
+import CancelOrderDialog from '../../components/CancelOrderDialog';
 import StatusChip from '../../components/StatusChip';
 import Skeleton from '../../components/Skeleton';
 
@@ -14,6 +15,9 @@ export default function AdminOrderDetail() {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   function load(silent = false) {
     if (!silent) setLoading(true);
@@ -40,6 +44,21 @@ export default function AdminOrderDetail() {
 
   function cancelSeen() {
     api.adminCancelSeen(orderId).then(setOrder).catch(() => setError('Не удалось подтвердить отмену'));
+  }
+
+  function cancel(reason: string) {
+    setCancelling(true);
+    setCancelError(null);
+    api.adminCancelOrder(orderId, reason)
+      .then((data) => {
+        setOrder(data);
+        setCancelOpen(false);
+      })
+      .catch((e) => {
+        const detail = e?.response?.data?.detail;
+        setCancelError(typeof detail === 'string' ? detail : 'Не удалось отменить заказ');
+      })
+      .finally(() => setCancelling(false));
   }
 
   function move(direction: 'up' | 'down') {
@@ -95,6 +114,13 @@ export default function AdminOrderDetail() {
         </div>
       )}
 
+      {order.status === 'cancelled' && order.cancel_reason && (
+        <div className="order-comment-view">
+          <div className="legend-title">Причина отмены</div>
+          <p className="body-text">{order.cancel_reason}</p>
+        </div>
+      )}
+
       {order.discount_amount > 0 && (
         <>
           <div className="total">
@@ -119,6 +145,7 @@ export default function AdminOrderDetail() {
         {order.status === 'new' && (
           <>
             <button className="btn" type="button" onClick={complete}>Выполнить</button>
+            <button className="btn danger" type="button" onClick={() => { setCancelError(null); setCancelOpen(true); }}>Отменить</button>
             <button className="icon-action" type="button" onClick={() => move('up')}>↑</button>
             <button className="icon-action" type="button" onClick={() => move('down')}>↓</button>
           </>
@@ -130,6 +157,15 @@ export default function AdminOrderDetail() {
           <Link className="btn secondary" to={`/product/${order.product_id}`}>Открыть товар</Link>
         )}
       </div>
+
+      <CancelOrderDialog
+        open={cancelOpen}
+        orderId={order.id}
+        busy={cancelling}
+        error={cancelError}
+        onConfirm={cancel}
+        onCancel={() => setCancelOpen(false)}
+      />
     </section>
   );
 }

@@ -206,6 +206,7 @@ class Order(Base):
     created_at = Column(DateTime, nullable=False, default=utcnow, index=True)
     read_at = Column(DateTime, nullable=True)
     cancelled_at = Column(DateTime, nullable=True)
+    cancel_reason = Column(Text, nullable=True)
     cancel_seen_at = Column(DateTime, nullable=True)
     done_at = Column(DateTime, nullable=True)
 

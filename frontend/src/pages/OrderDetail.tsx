@@ -131,8 +131,17 @@ export default function OrderDetail() {
 
       {order.status === 'cancelled' && (
         <div className="cancelled-note">
-          Заказ отменён {formatDate(order.cancelled_at)}. Состав сохранён в истории. Если это ошибка — напишите
-          в сообщество, соберём заново.
+          {order.cancel_reason ? (
+            <>
+              Заказ отменён владельцем {formatDate(order.cancelled_at)}.<br />
+              Причина: {order.cancel_reason}
+            </>
+          ) : (
+            <>
+              Заказ отменён {formatDate(order.cancelled_at)}. Состав сохранён в истории. Если это ошибка — напишите
+              в сообщество, соберём заново.
+            </>
+          )}
         </div>
       )}
 

@@ -15,14 +15,14 @@ const TABS = [
 ];
 
 export default function Admin() {
-  const [unread, setUnread] = useState(0);
+  const [queueCount, setQueueCount] = useState(0);
   const [reserveWaiting, setReserveWaiting] = useState(0);
   const [reserveReady, setReserveReady] = useState(0);
 
   async function refreshBadges() {
     await Promise.all([
       api.adminOrders({ limit: 1 })
-        .then((data) => setUnread(data.summary.unread))
+        .then((data) => setQueueCount(data.summary.queue))
         .catch(() => {}),
       api.adminReserve()
         .then((data) => {
@@ -49,7 +49,7 @@ export default function Admin() {
             className={({ isActive }) => `admin-tab${isActive ? ' is-active' : ''}`}
           >
             {tab.label}
-            {tab.to === 'orders' && unread > 0 && <span className="admin-tab-badge">{unread}</span>}
+            {tab.to === 'orders' && queueCount > 0 && <span className="admin-tab-badge">{queueCount}</span>}
             {tab.to === 'reserve' && reserveReady > 0 && <span className="admin-tab-badge">{reserveReady}</span>}
             {tab.to === 'reserve' && reserveReady === 0 && reserveWaiting > 0 && (
               <span className="admin-tab-wait">{reserveWaiting}</span>

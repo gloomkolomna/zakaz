@@ -892,6 +892,24 @@ h1 {
 
 .order:active { background: var(--line-soft); }
 
+.order-group { margin-top: 8px; }
+
+.order-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.order-group-name { font-weight: 600; color: var(--ink); text-decoration: none; }
+
+.order-group-name:hover { text-decoration: underline; }
+
+.order-group-head .admin-muted { font-size: 12px; white-space: nowrap; }
+
 .order-id {
   grid-area: id;
   font-size: 14px;

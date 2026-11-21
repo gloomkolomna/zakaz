@@ -149,6 +149,7 @@ export interface OrderBrief {
   status: OrderStatus;
   created_at: string;
   cancelled_at: string | null;
+  cancel_reason: string | null;
   done_at: string | null;
   product_id: number | null;
   product_title: string;
@@ -276,6 +277,7 @@ export interface OrderFilters {
   status?: OrderStatus | '';
   queue?: number;
   cancel_unread?: number;
+  group?: 'buyer';
   limit?: number;
   offset?: number;
 }
@@ -431,6 +433,8 @@ export const api = {
     client.post(`/admin/orders/${id}/move`, { direction }).then((res) => res.data),
   adminCancelSeen: (id: number) =>
     client.post<OrderDetail>(`/admin/orders/${id}/cancel-seen`).then((res) => res.data),
+  adminCancelOrder: (id: number, reason: string) =>
+    client.post<OrderDetail>(`/admin/orders/${id}/cancel`, { reason }).then((res) => res.data),
 
   adminDiscounts: (filters: { vk_id?: number; status?: string }) =>
     client.get<{ items: AdminDiscountGrant[] }>('/admin/discounts', { params: filters }).then((res) => res.data.items),

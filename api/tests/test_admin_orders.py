@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 
-from models import DonorCache, Log, Order, User
+from models import DiscountGrant, DonorCache, Log, Order, User, utcnow
 from tests.conftest import make_user_client
 from tests.factories import make_card, make_product, make_section, make_step
 
@@ -176,6 +176,79 @@ def test_cancel_seen_banner(admin_client, db):
     after = admin_client.get("/api/admin/orders").json()["summary"]
     assert after["cancelled_unread"] == 0
     assert admin_client.post(f"/api/admin/orders/{first_id}/cancel-seen").status_code == 409
+
+
+def test_orders_grouped_by_buyer(admin_client, db):
+    section, product, card, first_id, second_id, third_id = _make_orders(db)
+
+    data = admin_client.get("/api/admin/orders?group=buyer").json()
+    assert [item["user_id"] for item in data["items"]] == [123, 124, 125]
+    assert data["total"] == 3
+
+    assert admin_client.get("/api/admin/orders?group=nope").status_code == 400
+
+
+def test_admin_cancel_with_reason(admin_client, db):
+    section, product, card, first_id, second_id, third_id = _make_orders(db)
+
+    resp = admin_client.post(f"/api/admin/orders/{first_id}/cancel", json={"reason": "Нет материалов"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "cancelled"
+    assert body["cancel_reason"] == "Нет материалов"
+    assert body["cancelled_at"] is not None
+    assert body["queue_position"] is None
+    assert body["cancel_seen_at"] is not None
+
+    summary = admin_client.get("/api/admin/orders").json()["summary"]
+    assert summary["queue"] == 2
+    assert summary["cancelled_unread"] == 0
+
+    with make_user_client(123) as first:
+        detail = first.get(f"/api/orders/{first_id}").json()
+    assert detail["status"] == "cancelled"
+    assert detail["cancel_reason"] == "Нет материалов"
+
+
+def test_admin_cancel_returns_discount(admin_client, db):
+    section, product, card, first_id, second_id, third_id = _make_orders(db)
+    grant = DiscountGrant(
+        vk_id=123, percent=10, source="manual", external_reward_id="manual:test-cancel",
+        status="used", order_id=first_id, used_at=utcnow(),
+    )
+    db.add(grant)
+    db.flush()
+    order = db.query(Order).filter(Order.id == first_id).first()
+    order.discount_grant_id = grant.id
+    db.commit()
+
+    resp = admin_client.post(f"/api/admin/orders/{first_id}/cancel", json={"reason": "Дубль заказа"})
+    assert resp.status_code == 200
+    db.refresh(grant)
+    assert grant.status == "available"
+    assert grant.order_id is None
+
+
+def test_admin_cancel_validation(admin_client, db):
+    section, product, card, first_id, second_id, third_id = _make_orders(db)
+
+    assert admin_client.post(f"/api/admin/orders/{first_id}/cancel", json={"reason": "  "}).status_code == 400
+    assert admin_client.post(f"/api/admin/orders/{first_id}/cancel", json={"reason": "я" * 501}).status_code == 400
+    assert admin_client.post(f"/api/admin/orders/{first_id}/cancel", json={}).status_code == 422
+    assert admin_client.post(f"/api/admin/orders/9999/cancel", json={"reason": "х"}).status_code == 404
+
+    admin_client.post(f"/api/admin/orders/{first_id}/complete")
+    assert admin_client.post(f"/api/admin/orders/{first_id}/cancel", json={"reason": "х"}).status_code == 409
+
+    with make_user_client(124) as second:
+        second.post(f"/api/orders/{second_id}/cancel")
+    assert admin_client.post(f"/api/admin/orders/{second_id}/cancel", json={"reason": "х"}).status_code == 409
+
+    with make_user_client(123) as player:
+        assert player.post(f"/api/admin/orders/{third_id}/cancel", json={"reason": "х"}).status_code == 403
+
+    row = db.query(Order).filter(Order.id == third_id).first()
+    assert row.status == "new"
 
 
 def test_export_csv(admin_client, db):

@@ -73,6 +73,10 @@ def test_list_filters_summary_and_pagination(admin_client, db):
 
     search = admin_client.get("/api/admin/orders?q=Покупатель 124").json()
     assert [item["id"] for item in search["items"]] == [second_id]
+    search_lower = admin_client.get("/api/admin/orders?q=покупатель 124").json()
+    assert [item["id"] for item in search_lower["items"]] == [second_id]
+    search_product_lower = admin_client.get("/api/admin/orders?q=трекер").json()
+    assert {item["id"] for item in search_product_lower["items"]} == {first_id, second_id, third_id}
     search_id = admin_client.get(f"/api/admin/orders?q={third_id}").json()
     assert [item["id"] for item in search_id["items"]] == [third_id]
 
@@ -94,6 +98,11 @@ def test_players_search_and_detail(admin_client, db):
     by_name = admin_client.get("/api/admin/players?q=Сидорова").json()
     assert [row["vk_id"] for row in by_name] == [124]
     assert by_name[0]["orders_count"] == 1
+
+    by_name_lower = admin_client.get("/api/admin/players?q=сидорова").json()
+    assert [row["vk_id"] for row in by_name_lower] == [124]
+    by_partial_lower = admin_client.get("/api/admin/players?q=иван").json()
+    assert [row["vk_id"] for row in by_partial_lower] == [123]
 
     by_id = admin_client.get("/api/admin/players?q=125").json()
     assert [row["vk_id"] for row in by_id] == [125]

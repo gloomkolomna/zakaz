@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, StaticPool
 from sqlalchemy.orm import sessionmaker
 
-from db import get_db
+from db import enable_unicode_search, get_db
 from deps import get_current_user
 from models import Base, User
 
@@ -29,6 +29,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+enable_unicode_search(engine)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

@@ -848,13 +848,10 @@ h1 {
 
 .chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 18px 0 2px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-
-.chips::-webkit-scrollbar { display: none; }
 
 .chip {
   flex: none;
